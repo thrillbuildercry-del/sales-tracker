@@ -1,16 +1,6 @@
 import { 
-    db, 
-    collection, 
-    query, 
-    where, 
-    onSnapshot, 
-    doc, 
-    updateDoc, 
-    runTransaction, 
-    serverTimestamp, 
-    deleteDoc, 
-    addDoc, 
-    getDoc 
+    db, collection, query, where, onSnapshot, doc, updateDoc, 
+    runTransaction, serverTimestamp, deleteDoc, addDoc, getDoc 
 } from './firebase.js';
 
 // --- REAL-TIME LISTENERS ---
@@ -40,7 +30,7 @@ export const subscribeToCoverRequests = (callback) => {
     });
 };
 
-// --- ASSET MANAGEMENT (Stock & Debt) ---
+// --- ASSET MANAGEMENT ---
 
 // 1. Warehouse -> Driver (Restock)
 export const addStockToDriver = async (adminId, driverId, quantity) => {
@@ -57,23 +47,18 @@ export const addStockToDriver = async (adminId, driverId, quantity) => {
             
             transaction.update(driverRef, { currentStock: newStock });
             
-            // Log the action
             transaction.set(logRef, {
                 type: 'restock',
-                adminId, 
-                driverId,
-                quantity: parseInt(quantity),
-                timestamp: serverTimestamp()
+                adminId, driverId, quantity: parseInt(quantity), timestamp: serverTimestamp()
             });
         });
         return { success: true };
     } catch (error) {
-        console.error("Restock failed:", error);
         return { success: false, error };
     }
 };
 
-// 2. Driver -> Driver (P2P Transfer)
+// 2. Driver -> Driver (Transfer)
 export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
     const fromRef = doc(db, "users", fromId);
     const toRef = doc(db, "users", toId);
@@ -82,19 +67,16 @@ export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
         await runTransaction(db, async (t) => {
             const fromDoc = await t.get(fromRef);
             const toDoc = await t.get(toRef);
-            
-            if (!fromDoc.exists() || !toDoc.exists()) throw "One or both drivers not found";
+            if (!fromDoc.exists() || !toDoc.exists()) throw "Drivers not found";
 
             const fromData = fromDoc.data();
             const toData = toDoc.data();
 
-            // Deduct from Source
             t.update(fromRef, {
                 currentStock: (fromData.currentStock || 0) - parseInt(quantity || 0),
                 currentDebt: (fromData.currentDebt || 0) - parseInt(debtAmount || 0)
             });
 
-            // Add to Target
             t.update(toRef, {
                 currentStock: (toData.currentStock || 0) + parseInt(quantity || 0),
                 currentDebt: (toData.currentDebt || 0) + parseInt(debtAmount || 0)
@@ -102,12 +84,11 @@ export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
         });
         return { success: true };
     } catch (e) {
-        console.error("Transfer failed:", e);
         return { success: false, error: e };
     }
 };
 
-// 3. Driver -> Warehouse/House (Collection)
+// 3. Driver -> Warehouse (Collection)
 export const adminCollectAssets = async (driverId, stockToCollect, debtToCollect) => {
     const driverRef = doc(db, "users", driverId);
     try {
@@ -118,7 +99,6 @@ export const adminCollectAssets = async (driverId, stockToCollect, debtToCollect
             const currentStock = d.data().currentStock || 0;
             const currentDebt = d.data().currentDebt || 0;
 
-            // Ensure we don't go below zero
             const newStock = Math.max(0, currentStock - parseInt(stockToCollect || 0));
             const newDebt = Math.max(0, currentDebt - parseInt(debtToCollect || 0));
 
@@ -129,18 +109,15 @@ export const adminCollectAssets = async (driverId, stockToCollect, debtToCollect
         });
         return { success: true };
     } catch (e) {
-        console.error("Collection failed:", e);
         return { success: false, error: e };
     }
 };
 
-// --- USER MANAGEMENT ---
+// --- USER & SCHEDULE ---
 
 export const updateUserStatus = async (userId, newStatus) => {
     await updateDoc(doc(db, "users", userId), { accessStatus: newStatus });
 };
-
-// --- REQUEST HANDLING ---
 
 export const resolveStockRequest = async (reqId) => {
     await updateDoc(doc(db, "stock_requests", reqId), { status: 'completed' });
@@ -150,29 +127,19 @@ export const dismissStockRequest = async (reqId) => {
     await deleteDoc(doc(db, "stock_requests", reqId));
 };
 
-// --- SCHEDULE MANAGEMENT ---
-
 export const assignShift = async (driverId, shiftData) => {
-    // shiftData: { date: 'YYYY-MM-DD', start: 'HH:MM', end: 'HH:MM' }
     const userRef = doc(db, "users", driverId);
     const userDoc = await getDoc(userRef);
-    
     let shifts = userDoc.data().shifts || [];
-    
-    // Remove existing shift for that day/time if it exists (simple overwrite logic)
     shifts = shifts.filter(s => !(s.date === shiftData.date && s.start === shiftData.start));
-    
     shifts.push(shiftData);
-    
     await updateDoc(userRef, { shifts });
 };
 
 export const deleteShift = async (driverId, date, start) => {
     const userRef = doc(db, "users", driverId);
     const userDoc = await getDoc(userRef);
-    
     let shifts = userDoc.data().shifts || [];
     shifts = shifts.filter(s => !(s.date === date && s.start === start));
-    
     await updateDoc(userRef, { shifts });
 };

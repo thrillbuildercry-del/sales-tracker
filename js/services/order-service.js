@@ -6,6 +6,7 @@ import {
 const ORDERS_REF = collection(db, 'orders');
 
 // --- BUYER ACTIONS ---
+
 export const createOrder = async (buyerId, quantity, address, priceInfo) => {
     try {
         await addDoc(ORDERS_REF, {
@@ -62,9 +63,6 @@ export const completeOrder = async (orderId) => {
     });
 };
 
-/**
- * Listen for ALL pending orders (Incoming Jobs)
- */
 export const subscribeToPendingOrders = (callback) => {
     const q = query(ORDERS_REF, where("status", "==", "pending"));
     return onSnapshot(q, (snapshot) => {
@@ -73,15 +71,11 @@ export const subscribeToPendingOrders = (callback) => {
     });
 };
 
-/**
- * Listen for orders assigned to THIS driver
- */
 export const subscribeToDriverActiveOrders = (driverId, callback) => {
-    // Listen for Accepted OR Arrived orders for this driver
     const q = query(
         ORDERS_REF, 
         where("assignedDriverId", "==", driverId),
-        where("status", "in", ["accepted", "arrived"]) // We usually don't show completed ones in 'active'
+        where("status", "in", ["accepted", "arrived"])
     );
     return onSnapshot(q, (snapshot) => {
         const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -90,10 +84,11 @@ export const subscribeToDriverActiveOrders = (driverId, callback) => {
 };
 
 // --- ADMIN ACTIONS ---
+
 export const assignDriverToOrder = async (orderId, driverId, driverName) => {
     const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, {
-        status: 'assigned',
+        status: 'assigned', // Maps to 'accepted' logic in driver view
         assignedDriverId: driverId,
         driverName: driverName,
         assignedAt: serverTimestamp()

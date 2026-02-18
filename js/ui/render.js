@@ -27,10 +27,6 @@ export const renderLogin = () => {
         </div>
     `;
 
-    // Note: In the new system, we might distinguish intent by which button is clicked
-    // For simplicity, both trigger Google Auth, but backend/auth-manager decides initial role if new.
-    // To implement "Buyer vs Driver" specific signup, we'd pass a flag to loginWithGoogle.
-    
     document.getElementById('login-driver-btn').addEventListener('click', () => loginWithGoogle('driver'));
     document.getElementById('login-buyer-btn').addEventListener('click', () => loginWithGoogle('buyer'));
 };

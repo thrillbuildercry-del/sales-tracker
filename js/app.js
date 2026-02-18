@@ -27,8 +27,7 @@ const initApp = () => {
                     handleUserRouting({ uid: user.uid, ...docSnap.data() });
                 } else {
                     console.error("User authenticated but no profile found in Firestore.");
-                    // Optional: If doc doesn't exist, we might need to recreate it or show error.
-                    // Auth-Manager usually creates it on login.
+                    // Fallback to login if profile deleted
                     renderLogin();
                 }
             }, (error) => {

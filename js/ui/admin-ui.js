@@ -1,13 +1,7 @@
 import { 
-    subscribeToDrivers, 
-    subscribeToStockRequests, 
-    addStockToDriver, 
-    p2pTransfer, 
-    adminCollectAssets, 
-    assignShift, 
-    deleteShift, 
-    resolveStockRequest, 
-    dismissStockRequest 
+    subscribeToDrivers, subscribeToStockRequests, addStockToDriver, 
+    p2pTransfer, adminCollectAssets, assignShift, deleteShift, 
+    resolveStockRequest, dismissStockRequest 
 } from '../services/admin-service.js';
 import { subscribeToPendingOrders } from '../services/order-service.js';
 import { getWeeklyReport } from '../services/report-service.js';
@@ -23,10 +17,7 @@ export const renderAdminDashboard = (currentUser) => {
     appRoot.innerHTML = `
         <div class="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors duration-200">
             <header class="bg-gray-900 text-white p-4 sticky top-0 z-40 shadow-lg flex justify-between items-center">
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight text-blue-400">BOSS DASHBOARD</h1>
-                    <p class="text-xs text-gray-400">${new Date().toDateString()}</p>
-                </div>
+                <div><h1 class="text-xl font-bold tracking-tight text-blue-400">BOSS DASHBOARD</h1></div>
                 <div class="flex items-center gap-3">
                     <button onclick="window.toggleTheme()" class="p-2 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300"><i data-lucide="moon" class="w-5 h-5"></i></button>
                     <button id="admin-logout" class="text-xs bg-red-900 hover:bg-red-800 px-3 py-1.5 rounded font-bold transition">Logout</button>
@@ -44,10 +35,10 @@ export const renderAdminDashboard = (currentUser) => {
                     <button class="nav-tab flex-1 py-2 px-4 rounded-lg font-bold text-xs whitespace-nowrap transition" data-target="reports">Reports</button>
                 </div>
 
-                <div id="view-team" class="tab-content space-y-4">
+                <div id="view-team" class="tab-content active space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                          <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                            <div class="text-xs text-gray-500 uppercase">Total Items Sold (7d)</div>
+                            <div class="text-xs text-gray-500 uppercase">Total Items (7d)</div>
                             <div class="text-2xl font-bold text-blue-600" id="stat-total-items">--</div>
                         </div>
                         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
@@ -64,7 +55,6 @@ export const renderAdminDashboard = (currentUser) => {
                 </div>
 
                 <div id="view-manage" class="tab-content hidden space-y-6">
-                    
                     <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border dark:border-gray-700">
                         <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="package-plus" class="w-4 h-4 mr-2"></i> Add Stock</h3>
                         <div class="flex gap-2">
@@ -75,37 +65,32 @@ export const renderAdminDashboard = (currentUser) => {
                     </div>
 
                     <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border dark:border-gray-700">
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="arrow-right-left" class="w-4 h-4 mr-2"></i> Transfers & Collection</h3>
                         
-                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="arrow-right-left" class="w-4 h-4 mr-2"></i> Driver to Driver Transfer</h3>
-                        <div class="flex items-center gap-2 mb-2">
-                            <div class="flex-1">
-                                <label class="text-[10px] text-gray-500 font-bold uppercase">From</label>
-                                <select id="trans-from" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
+                        <div class="mb-4 pb-4 border-b dark:border-gray-600">
+                            <div class="flex items-center gap-2 mb-2">
+                                <select id="trans-from" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"><option>From...</option></select>
+                                <i data-lucide="arrow-right" class="w-4 h-4 text-gray-400"></i>
+                                <select id="trans-to" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"><option>To...</option></select>
                             </div>
-                            <i data-lucide="arrow-right" class="w-4 h-4 text-gray-400 mt-4"></i>
-                            <div class="flex-1">
-                                <label class="text-[10px] text-gray-500 font-bold uppercase">To</label>
-                                <select id="trans-to" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
+                            <div class="flex gap-2 mb-2">
+                                <input type="number" id="trans-qty" placeholder="Items" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
+                                <input type="number" id="trans-debt" placeholder="Debt $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
                             </div>
+                            <button id="btn-admin-transfer" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg transition">Transfer</button>
                         </div>
-                        <div class="flex gap-2 mb-4">
-                            <input type="number" id="trans-qty" placeholder="Items" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
-                            <input type="number" id="trans-debt" placeholder="Debt $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
-                        </div>
-                        <button id="btn-admin-transfer" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg transition mb-6">Transfer Assets</button>
 
-                        <hr class="border-gray-200 dark:border-gray-700 mb-6">
-
-                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="download" class="w-4 h-4 mr-2 text-green-500"></i> Collection / Return</h3>
-                        <div class="mb-2">
-                             <label class="text-[10px] text-gray-500 font-bold uppercase">Select Driver</label>
-                            <select id="collect-driver" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
+                        <div>
+                            <div class="mb-2">
+                                <label class="text-[10px] text-gray-500 font-bold uppercase">Collect from Driver</label>
+                                <select id="collect-driver" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
+                            </div>
+                            <div class="flex gap-2">
+                                <input type="number" id="collect-qty" placeholder="Return Stock" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white text-blue-600 font-bold">
+                                <input type="number" id="collect-debt" placeholder="Collect Cash $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white text-green-600 font-bold">
+                            </div>
+                            <button id="btn-admin-collect" class="mt-3 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg transition">Process Collection</button>
                         </div>
-                        <div class="flex gap-2">
-                            <input type="number" id="collect-qty" placeholder="Return Stock" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white text-blue-600 font-bold">
-                            <input type="number" id="collect-debt" placeholder="Collect Cash $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white text-green-600 font-bold">
-                        </div>
-                        <button id="btn-admin-collect" class="mt-3 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg transition">Process Collection</button>
                     </div>
                 </div>
 
@@ -121,12 +106,6 @@ export const renderAdminDashboard = (currentUser) => {
                             <input type="time" id="sched-end" class="w-full p-2 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded text-sm dark:text-white">
                         </div>
                         <button id="btn-assign-shift" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg transition">Assign</button>
-                    </div>
-                    
-                    <div class="flex justify-between items-center mb-2">
-                        <button id="cal-prev" class="p-1 bg-gray-200 dark:bg-gray-700 rounded"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-                        <span id="cal-month" class="font-bold text-sm dark:text-white">Month</span>
-                        <button id="cal-next" class="p-1 bg-gray-200 dark:bg-gray-700 rounded"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
                     </div>
                     <div id="admin-calendar" class="calendar-grid bg-white dark:bg-gray-800 rounded border dark:border-gray-700 p-1"></div>
                     <div id="cal-details" class="mt-2 bg-white dark:bg-gray-800 p-3 rounded shadow-sm text-sm hidden"></div>
@@ -168,7 +147,6 @@ export const renderAdminDashboard = (currentUser) => {
     setupCalendar();
     
     // --- LISTENERS ---
-
     document.getElementById('admin-logout').addEventListener('click', () => logoutUser());
     document.getElementById('btn-close-detail').addEventListener('click', () => document.getElementById('driver-detail-modal').classList.add('hidden'));
 
@@ -184,7 +162,6 @@ export const renderAdminDashboard = (currentUser) => {
     subscribeToPendingOrders(renderPendingOrders);
     
     // --- ACTIONS ---
-
     document.getElementById('btn-admin-restock').addEventListener('click', async () => {
         const uid = document.getElementById('restock-driver').value;
         const qty = document.getElementById('restock-qty').value;
@@ -198,31 +175,22 @@ export const renderAdminDashboard = (currentUser) => {
     document.getElementById('btn-admin-transfer').addEventListener('click', async () => {
         const f = document.getElementById('trans-from').value;
         const t = document.getElementById('trans-to').value;
-        const q = parseInt(document.getElementById('trans-qty').value) || 0;
-        const d = parseInt(document.getElementById('trans-debt').value) || 0;
-        if(f && t && (q>0 || d>0)) {
+        const q = document.getElementById('trans-qty').value;
+        const d = document.getElementById('trans-debt').value;
+        if(f && t && (q || d)) {
             await p2pTransfer(f, t, q, d);
-            showToast("Transfer Complete");
-            document.getElementById('trans-qty').value = '';
-            document.getElementById('trans-debt').value = '';
+            showToast("Transferred");
         }
     });
 
     document.getElementById('btn-admin-collect').addEventListener('click', async () => {
         const uid = document.getElementById('collect-driver').value;
-        const s = parseInt(document.getElementById('collect-qty').value) || 0;
-        const d = parseInt(document.getElementById('collect-debt').value) || 0;
-        
-        if(uid && (s > 0 || d > 0)) {
-            if(confirm(`Confirm Collection?\nStock: ${s}\nCash: $${d}`)) {
-                const res = await adminCollectAssets(uid, s, d);
-                if(res.success) {
-                    showToast("Collection Processed");
-                    document.getElementById('collect-qty').value = '';
-                    document.getElementById('collect-debt').value = '';
-                } else {
-                    alert("Error: " + res.error);
-                }
+        const s = document.getElementById('collect-qty').value;
+        const d = document.getElementById('collect-debt').value;
+        if(uid && (s || d)) {
+            if(confirm("Confirm Collection?")) {
+                await adminCollectAssets(uid, s, d);
+                showToast("Collected");
             }
         }
     });
@@ -232,10 +200,7 @@ export const renderAdminDashboard = (currentUser) => {
         const date = document.getElementById('sched-date').value;
         const start = document.getElementById('sched-start').value;
         const end = document.getElementById('sched-end').value;
-        if(uid && date && start && end) {
-            await assignShift(uid, { date, start, end });
-            showToast("Shift Assigned");
-        }
+        if(uid && date) await assignShift(uid, {date, start, end});
     });
 };
 
@@ -243,22 +208,20 @@ function setupTabs() {
     const tabs = document.querySelectorAll('.nav-tab');
     const contents = document.querySelectorAll('.tab-content');
     
-    // Set default active tab (Team)
+    // Set default (Team)
     tabs[0].classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'); 
 
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             // Deactivate all
             tabs.forEach(t => t.classList.remove('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'));
-            // Hide all content
             contents.forEach(c => c.classList.add('hidden'));
             
-            // Activate clicked
+            // Activate selected
             tab.classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700');
-            // Show content
             const targetId = `view-${tab.dataset.target}`;
-            const targetEl = document.getElementById(targetId);
-            if(targetEl) targetEl.classList.remove('hidden');
+            const target = document.getElementById(targetId);
+            if(target) target.classList.remove('hidden');
         });
     });
 }
@@ -267,29 +230,18 @@ function renderDriverList(drivers) {
     const list = document.getElementById('driver-list');
     list.innerHTML = '';
     
-    if(drivers.length === 0) {
-        list.innerHTML = '<div class="text-center text-gray-500">No drivers found.</div>';
-        return;
-    }
-
     drivers.forEach(d => {
-        const isOnline = d.onlineStatus === 'online';
         const card = document.createElement('div');
         card.className = "bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition";
         card.innerHTML = `
             <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-blue-600 bg-blue-100 border-2 ${isOnline ? 'border-green-500' : 'border-gray-300'}">
-                    ${d.displayName ? d.displayName[0] : 'U'}
-                </div>
+                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-blue-600 bg-blue-100">${d.displayName[0]}</div>
                 <div>
                     <div class="font-bold dark:text-white">${d.displayName}</div>
-                    <div class="text-xs text-gray-500">Stock: ${d.currentStock || 0} • Debt: <span class="text-red-500">$${d.currentDebt || 0}</span></div>
+                    <div class="text-xs text-gray-500">Stock: ${d.currentStock || 0} • Debt: $${d.currentDebt || 0}</div>
                 </div>
             </div>
-            <div class="text-right">
-                <div class="text-xs font-bold px-2 py-1 rounded ${d.accessStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} mb-1">${d.accessStatus}</div>
-                <div class="text-[10px] text-gray-400">View History</div>
-            </div>
+            <div class="text-xs text-gray-400">View History ></div>
         `;
         card.addEventListener('click', () => showDriverHistory(d.id, d.displayName));
         list.appendChild(card);
@@ -298,66 +250,33 @@ function renderDriverList(drivers) {
 
 async function showDriverHistory(uid, name) {
     const modal = document.getElementById('driver-detail-modal');
-    const title = document.getElementById('detail-name');
     const list = document.getElementById('detail-history-list');
-    const weekSoldEl = document.getElementById('detail-week-sold');
-    const weekProfitEl = document.getElementById('detail-week-profit');
-    
-    title.innerText = `${name} - History`;
-    list.innerHTML = '<div class="text-center text-gray-500 mt-10">Loading...</div>';
+    document.getElementById('detail-name').innerText = `${name} - History`;
     modal.classList.remove('hidden');
+    list.innerHTML = '<div class="text-center p-4">Loading...</div>';
 
-    try {
-        const stats = await getDriverStats(uid);
-        
-        weekSoldEl.innerText = stats.weeklyUnits;
-        weekProfitEl.innerText = `$${stats.weeklyProfit}`;
+    const stats = await getDriverStats(uid);
+    // Update summary stats in modal
+    document.getElementById('detail-week-sold').innerText = stats.weeklyUnits;
+    document.getElementById('detail-week-profit').innerText = `$${stats.weeklyProfit}`;
 
-        list.innerHTML = '';
-        if(stats.history.length === 0) {
-            list.innerHTML = '<div class="text-center text-gray-500 mt-5">No sales recorded.</div>';
-            return;
-        }
-
-        stats.history.slice(0, 50).forEach(sale => {
-            const date = sale.timestamp ? formatDate(sale.timestamp) : 'N/A';
-            const time = sale.timestamp ? formatTime(sale.timestamp) : '';
-            const isStandard = sale.type === 'standard';
-            
-            const badgeClass = isStandard 
-                ? 'bg-green-100 text-green-700 border border-green-200' 
-                : 'bg-orange-100 text-orange-700 border border-orange-200';
-            
-            const typeLabel = isStandard ? 'FULL PRICE' : 'DEAL';
-
-            const el = document.createElement('div');
-            el.className = "bg-white dark:bg-gray-700 p-3 rounded-lg border border-gray-100 dark:border-gray-600 flex justify-between items-center";
-            el.innerHTML = `
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="font-bold dark:text-white text-sm">${sale.quantity} Item(s)</span>
-                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeClass}">${typeLabel}</span>
-                    </div>
-                    <div class="text-xs text-gray-400 mt-0.5">${date} at ${time}</div>
-                </div>
-                <div class="text-right">
-                    <div class="text-[10px] text-gray-500 dark:text-gray-400">Profit</div>
-                    <div class="text-green-600 dark:text-green-400 font-bold">+$${sale.driverProfit}</div>
-                </div>
-            `;
-            list.appendChild(el);
-        });
-
-    } catch (e) {
-        list.innerHTML = `<div class="text-center text-red-500">Error loading history</div>`;
-        console.error(e);
-    }
+    list.innerHTML = '';
+    stats.history.slice(0,50).forEach(sale => {
+        const isStd = sale.type === 'standard';
+        const color = isStd ? 'text-green-600 bg-green-100' : 'text-orange-600 bg-orange-100';
+        const el = document.createElement('div');
+        el.className = "p-3 border-b dark:border-gray-700 flex justify-between items-center";
+        el.innerHTML = `
+            <div>
+                <span class="font-bold dark:text-white">${sale.quantity} Items</span>
+                <span class="text-[10px] px-1 rounded ml-1 uppercase ${color}">${sale.type || 'standard'}</span>
+                <div class="text-xs text-gray-400">${formatDate(sale.timestamp)} ${formatTime(sale.timestamp)}</div>
+            </div>
+            <div class="text-green-600 font-bold">+$${sale.driverProfit}</div>
+        `;
+        list.appendChild(el);
+    });
 }
-
-// ... [Keep other functions: renderPendingOrders, renderStockRequests, populateDropdowns, setupCalendar, renderCalendarGrid, loadReportData, showToast] ...
-// (These were unchanged from previous working versions and are omitted here for brevity, but crucial for the file to run.)
-// ENSURE YOU INCLUDE THE HELPER FUNCTIONS DEFINED IN THE PREVIOUS RESPONSE IF COPY-PASTING.
-// Below are the essential placeholders for the unchanged functions to complete the file context.
 
 function renderPendingOrders(orders) {
     const list = document.getElementById('pending-orders-list');
@@ -391,25 +310,16 @@ function renderStockRequests(reqs) {
 function populateDropdowns() {
     const selects = document.querySelectorAll('.driver-select');
     selects.forEach(sel => {
-        const current = sel.value;
         sel.innerHTML = '<option value="">Select Driver...</option>';
         cachedDrivers.forEach(d => {
-            if(d.accessStatus !== 'suspended') {
-                const opt = document.createElement('option');
-                opt.value = d.id; 
-                opt.text = d.displayName;
-                sel.appendChild(opt);
-            }
+            const opt = document.createElement('option');
+            opt.value = d.id; opt.text = d.displayName;
+            sel.appendChild(opt);
         });
-        sel.value = current;
     });
 }
 
-function setupCalendar() {
-    document.getElementById('cal-prev').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendarGrid(); });
-    document.getElementById('cal-next').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendarGrid(); });
-}
-
+function setupCalendar() { document.getElementById('cal-prev').onclick = ()=>{calendarDate.setMonth(calendarDate.getMonth()-1);renderCalendarGrid()}; document.getElementById('cal-next').onclick = ()=>{calendarDate.setMonth(calendarDate.getMonth()+1);renderCalendarGrid()}; }
 function renderCalendarGrid() {
     const grid = document.getElementById('admin-calendar');
     const label = document.getElementById('cal-month');

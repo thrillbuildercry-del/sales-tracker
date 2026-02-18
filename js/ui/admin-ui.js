@@ -319,7 +319,7 @@ function populateDropdowns() {
     });
 }
 
-function setupCalendar() { document.getElementById('cal-prev').onclick = ()=>{calendarDate.setMonth(calendarDate.getMonth()-1);renderCalendarGrid()}; document.getElementById('cal-next').onclick = ()=>{calendarDate.setMonth(calendarDate.getMonth()+1);renderCalendarGrid()}; }
+function setupCalendar(){ document.getElementById('cal-prev').onclick = ()=>{calendarDate.setMonth(calendarDate.getMonth()-1);renderCalendarGrid()}; document.getElementById('cal-next').onclick = ()=>{calendarDate.setMonth(calendarDate.getMonth()+1);renderCalendarGrid()}; }
 function renderCalendarGrid() {
     const grid = document.getElementById('admin-calendar');
     const label = document.getElementById('cal-month');

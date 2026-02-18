@@ -1,18 +1,17 @@
-
-import { db, doc, runTransaction, serverTimestamp, collection, addDoc } from './firebase.js';
+import { db, doc, runTransaction, serverTimestamp, collection, addDoc, updateDoc, query, where, orderBy, onSnapshot, getDocs } from './firebase.js';
 import { calculateSaleMetrics } from '../utils/calculations.js';
+import { DRIVER_ECONOMICS } from '../config/constants.js';
 
-/**
- * Records a sale: Updates User (Stock/Debt) and creates a Sale Record
- */
-export const processSale = async (userId, quantity) => {
-    const metrics = calculateSaleMetrics(quantity);
+// --- SALES ---
+
+export const processSale = async (userId, quantity, type = 'standard') => {
+    // type: 'standard' or 'deal'
+    const metrics = calculateSaleMetrics(quantity, type);
     const userRef = doc(db, "users", userId);
     const salesRef = collection(db, "sales");
 
     try {
         await runTransaction(db, async (transaction) => {
-            // 1. Get current user data
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists()) throw "User does not exist!";
             
@@ -20,21 +19,13 @@ export const processSale = async (userId, quantity) => {
             const newStock = (userData.currentStock || 0) - quantity;
             const newDebt = (userData.currentDebt || 0) + metrics.debtIncrease;
 
-            if (newStock < 0) {
-                throw "Insufficient Stock!";
-            }
+            if (newStock < 0) throw "Insufficient Stock!";
 
-            // 2. Update User Data
             transaction.update(userRef, {
                 currentStock: newStock,
                 currentDebt: newDebt
             });
 
-            // 3. Create Sale Record (We can't return ID from transaction directly, but we write it)
-            // Note: In Firestore transactions, write operations must come after reads.
-            // Since 'addDoc' generates an ID automatically, we use a slightly different approach for transactions 
-            // if we want strict consistency, but for sales logs, a batch or standard write is often okay. 
-            // However, to be strict, we can generate a ref first.
             const newSaleRef = doc(salesRef); 
             transaction.set(newSaleRef, {
                 driverId: userId,
@@ -42,32 +33,78 @@ export const processSale = async (userId, quantity) => {
                 grossRevenue: metrics.grossRevenue,
                 debtIncrease: metrics.debtIncrease,
                 driverProfit: metrics.driverProfit,
-                timestamp: serverTimestamp(),
-                type: 'walk-up'
+                type: type, // Stores 'standard' or 'deal' for reports
+                timestamp: serverTimestamp()
             });
         });
         return { success: true, metrics };
     } catch (error) {
-        console.error("Sale Transaction Failed:", error);
-        return { success: false, error: error };
+        console.error("Sale Failed:", error);
+        return { success: false, error };
     }
 };
 
-/**
- * Start Shift Logic
- */
-export const startShift = async (userId) => {
-    const shiftRef = collection(db, "shifts");
-    const userRef = doc(db, "users", userId);
-    
-    // Create a new shift document
-    const docRef = await addDoc(shiftRef, {
-        driverId: userId,
-        startTime: serverTimestamp(),
-        status: 'open'
-    });
+// --- STATS & HISTORY ---
 
-    // Update user to know they are on a shift
-    // (Optional: You might want to store currentShiftId on the user to prevent double starts)
-    return docRef.id;
+export const getDriverStats = async (userId) => {
+    // Fetch History
+    const q = query(
+        collection(db, "sales"), 
+        where("driverId", "==", userId),
+        orderBy("timestamp", "desc")
+    );
+    const snap = await getDocs(q);
+    const history = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Calculate Weekly Stats
+    const now = new Date();
+    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
+    startOfWeek.setHours(0,0,0,0);
+
+    let weeklyUnits = 0;
+    let weeklyProfit = 0;
+
+    history.forEach(sale => {
+        if (sale.timestamp && sale.timestamp.toDate() >= startOfWeek) {
+            weeklyUnits += sale.quantity;
+            weeklyProfit += (sale.driverProfit || 0);
+        }
+    });
+    
+    return { history, weeklyUnits, weeklyProfit };
+};
+
+// --- MISC ---
+
+export const requestStock = async (userId, userName) => {
+    await addDoc(collection(db, "stock_requests"), {
+        requesterUid: userId, requesterName: userName, status: 'pending', timestamp: serverTimestamp()
+    });
+};
+
+export const saveVehicleInfo = async (userId, vehicleData) => {
+    await updateDoc(doc(db, "users", userId), { vehicle: vehicleData });
+};
+
+export const requestCover = async (userId, userName, shiftData, coverStart, coverEnd) => {
+    await addDoc(collection(db, "cover_requests"), {
+        requesterUid: userId, requesterName: userName, 
+        originalDate: shiftData.date, originalStart: shiftData.start, originalEnd: shiftData.end,
+        coverStart, coverEnd, status: 'open', timestamp: serverTimestamp()
+    });
+};
+
+export const subscribeToAllCoverRequests = (callback) => {
+    const q = query(collection(db, "cover_requests"), where("status", "==", "open"));
+    return onSnapshot(q, (snapshot) => {
+        const reqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        callback(reqs);
+    });
+};
+
+export const acceptCoverRequest = async (reqId, accepterUid, accepterName) => {
+    // Logic to accept cover (simplified)
+    const reqRef = doc(db, "cover_requests", reqId);
+    await updateDoc(reqRef, { status: 'filled', filledByUid: accepterUid, filledByName: accepterName });
+    return { success: true };
 };

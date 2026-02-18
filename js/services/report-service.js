@@ -12,19 +12,19 @@ export const getWeeklyReport = async () => {
 
     // 2. Fetch Walk-up Sales
     const salesRef = collection(db, 'sales');
-    // Note: This query requires a Firestore Index (Click the link in console if it fails)
     const salesQuery = query(salesRef, where('timestamp', '>=', lastWeek), orderBy('timestamp'));
     const salesSnap = await getDocs(salesQuery);
 
     // 3. Fetch Delivered Orders
     const ordersRef = collection(db, 'orders');
-    const ordersQuery = query(ordersRef, where('status', '==', 'delivered'));
+    // Note: 'completed' is the new status for finished orders, check for 'delivered' legacy support if needed
+    const ordersQuery = query(ordersRef, where('status', 'in', ['completed', 'delivered'])); 
     const ordersSnap = await getDocs(ordersQuery);
 
     let totalRevenue = 0;
     let totalItems = 0;
-    const salesByDriver = {}; // { 'driverId': revenue }
-    const dailyRevenue = {};  // { 'Mon': 100, 'Tue': 200 }
+    const salesByDriver = {}; 
+    const dailyRevenue = {};  
 
     // Helper to process items
     const processItem = (amount, driverId, dateObj) => {
@@ -54,8 +54,6 @@ export const getWeeklyReport = async () => {
     // Process Deliveries
     ordersSnap.forEach(doc => {
         const data = doc.data();
-        // Manual date filter for orders to avoid complex composite indexes
-        // We prioritize deliveredAt, fallback to createdAt
         const dateRaw = data.deliveredAt || data.createdAt;
         if (dateRaw) {
             const date = dateRaw.toDate();

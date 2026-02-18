@@ -5,9 +5,7 @@ import {
 
 const ORDERS_REF = collection(db, 'orders');
 
-/**
- * Buyer: Create a new order
- */
+// --- BUYER ACTIONS ---
 export const createOrder = async (buyerId, quantity, address, priceInfo) => {
     try {
         await addDoc(ORDERS_REF, {
@@ -15,37 +13,57 @@ export const createOrder = async (buyerId, quantity, address, priceInfo) => {
             quantity: parseInt(quantity),
             totalPrice: priceInfo.grossRevenue,
             deliveryAddress: address,
-            status: 'pending', // pending -> assigned -> delivered -> cancelled
+            status: 'pending', 
             assignedDriverId: null,
             createdAt: serverTimestamp(),
-            driverName: null
+            driverName: null,
+            eta: null,
+            vehicle: null
         });
         return { success: true };
     } catch (error) {
         console.error("Error creating order:", error);
-        return { success: false, error };
+        return { success: false, error: error.message };
     }
 };
 
-/**
- * Buyer: Listen to MY orders
- * NOTE: If this fails, check console for "Index Required" link.
- */
 export const subscribeToMyOrders = (buyerId, callback) => {
-    const q = query(
-        ORDERS_REF, 
-        where("buyerId", "==", buyerId),
-        orderBy("createdAt", "desc") 
-    );
-
+    const q = query(ORDERS_REF, where("buyerId", "==", buyerId), orderBy("createdAt", "desc"));
     return onSnapshot(q, (snapshot) => {
         const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
         callback(orders);
     });
 };
 
+// --- DRIVER ACTIONS ---
+
+export const acceptOrder = async (orderId, driverId, driverName, vehicleString, eta) => {
+    const orderRef = doc(db, 'orders', orderId);
+    await updateDoc(orderRef, {
+        status: 'accepted',
+        assignedDriverId: driverId,
+        driverName: driverName,
+        vehicle: vehicleString,
+        eta: eta,
+        acceptedAt: serverTimestamp()
+    });
+};
+
+export const markArrived = async (orderId) => {
+    const orderRef = doc(db, 'orders', orderId);
+    await updateDoc(orderRef, { status: 'arrived' });
+};
+
+export const completeOrder = async (orderId) => {
+    const orderRef = doc(db, 'orders', orderId);
+    await updateDoc(orderRef, {
+        status: 'completed',
+        deliveredAt: serverTimestamp()
+    });
+};
+
 /**
- * Admin: Listen to ALL Pending orders
+ * Listen for ALL pending orders (Incoming Jobs)
  */
 export const subscribeToPendingOrders = (callback) => {
     const q = query(ORDERS_REF, where("status", "==", "pending"));
@@ -56,26 +74,14 @@ export const subscribeToPendingOrders = (callback) => {
 };
 
 /**
- * Admin: Assign Driver to Order
+ * Listen for orders assigned to THIS driver
  */
-export const assignDriverToOrder = async (orderId, driverId, driverName) => {
-    const orderRef = doc(db, 'orders', orderId);
-    await updateDoc(orderRef, {
-        status: 'assigned',
-        assignedDriverId: driverId,
-        driverName: driverName,
-        assignedAt: serverTimestamp()
-    });
-};
-
-/**
- * Driver: Listen to My Active Deliveries
- */
-export const subscribeToDriverOrders = (driverId, callback) => {
+export const subscribeToDriverActiveOrders = (driverId, callback) => {
+    // Listen for Accepted OR Arrived orders for this driver
     const q = query(
         ORDERS_REF, 
         where("assignedDriverId", "==", driverId),
-        where("status", "==", "assigned")
+        where("status", "in", ["accepted", "arrived"]) // We usually don't show completed ones in 'active'
     );
     return onSnapshot(q, (snapshot) => {
         const orders = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -83,13 +89,13 @@ export const subscribeToDriverOrders = (driverId, callback) => {
     });
 };
 
-/**
- * Driver: Complete Delivery
- */
-export const completeOrder = async (orderId) => {
+// --- ADMIN ACTIONS ---
+export const assignDriverToOrder = async (orderId, driverId, driverName) => {
     const orderRef = doc(db, 'orders', orderId);
     await updateDoc(orderRef, {
-        status: 'delivered',
-        deliveredAt: serverTimestamp()
+        status: 'assigned',
+        assignedDriverId: driverId,
+        driverName: driverName,
+        assignedAt: serverTimestamp()
     });
 };

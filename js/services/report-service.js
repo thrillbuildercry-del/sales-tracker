@@ -2,7 +2,7 @@ import { db, collection, query, where, getDocs, orderBy } from './firebase.js';
 
 /**
  * Fetch all completed sales and delivered orders for the last 7 days
- * Returns aggregated data for Admin Charts
+ * Returns aggregated data for charts
  */
 export const getWeeklyReport = async () => {
     // 1. Define time range (Last 7 days)
@@ -10,34 +10,33 @@ export const getWeeklyReport = async () => {
     const lastWeek = new Date();
     lastWeek.setDate(today.getDate() - 7);
 
-    // 2. Fetch Sales (Walk-ups)
+    // 2. Fetch Walk-up Sales
     const salesRef = collection(db, 'sales');
-    // Note: If this fails, check browser console for Firestore Index creation link
+    // Note: This query requires a Firestore Index (Click the link in console if it fails)
     const salesQuery = query(salesRef, where('timestamp', '>=', lastWeek), orderBy('timestamp'));
     const salesSnap = await getDocs(salesQuery);
 
-    // 3. Fetch Delivered Orders (App Orders)
+    // 3. Fetch Delivered Orders
     const ordersRef = collection(db, 'orders');
-    // We look for 'completed' (new status) or 'delivered' (legacy status)
-    const ordersQuery = query(ordersRef, where('status', 'in', ['completed', 'delivered']));
+    const ordersQuery = query(ordersRef, where('status', '==', 'delivered'));
     const ordersSnap = await getDocs(ordersQuery);
 
     let totalRevenue = 0;
     let totalItems = 0;
-    const salesByDriver = {}; // { 'Driver Name': revenue }
+    const salesByDriver = {}; // { 'driverId': revenue }
     const dailyRevenue = {};  // { 'Mon': 100, 'Tue': 200 }
 
-    // Helper to aggregate data
+    // Helper to process items
     const processItem = (amount, driverId, dateObj) => {
         if (!amount || !driverId) return;
         
         totalRevenue += amount;
         
-        // Group by Driver ID (UI will map ID to Name later)
+        // Group by Driver
         if (!salesByDriver[driverId]) salesByDriver[driverId] = 0;
         salesByDriver[driverId] += amount;
 
-        // Group by Day of Week
+        // Group by Day
         const dayName = dateObj.toLocaleDateString('en-US', { weekday: 'short' });
         if (!dailyRevenue[dayName]) dailyRevenue[dayName] = 0;
         dailyRevenue[dayName] += amount;
@@ -48,20 +47,21 @@ export const getWeeklyReport = async () => {
         const data = doc.data();
         if (data.timestamp) {
             processItem(data.grossRevenue, data.driverId, data.timestamp.toDate());
-            totalItems += (data.quantity || 0);
+            totalItems += data.quantity;
         }
     });
 
-    // Process App Orders
+    // Process Deliveries
     ordersSnap.forEach(doc => {
         const data = doc.data();
+        // Manual date filter for orders to avoid complex composite indexes
+        // We prioritize deliveredAt, fallback to createdAt
         const dateRaw = data.deliveredAt || data.createdAt;
         if (dateRaw) {
             const date = dateRaw.toDate();
-            // Filter manually for last week to avoid complex composite index requirement
             if (date >= lastWeek) {
                 processItem(data.totalPrice, data.assignedDriverId, date);
-                totalItems += (data.quantity || 0);
+                totalItems += data.quantity;
             }
         }
     });

@@ -1,7 +1,4 @@
-import { 
-    db, collection, query, where, onSnapshot, doc, updateDoc, 
-    runTransaction, serverTimestamp, deleteDoc, addDoc, getDoc 
-} from './firebase.js';
+import { db, collection, query, where, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, deleteDoc, addDoc, getDoc } from './firebase.js';
 
 // --- REAL-TIME LISTENERS ---
 
@@ -30,26 +27,45 @@ export const subscribeToCoverRequests = (callback) => {
     });
 };
 
-// --- ASSET MANAGEMENT ---
+// --- MANAGEMENT ACTIONS ---
 
-// 1. Warehouse -> Driver (Restock)
+export const updateUserStatus = async (userId, newStatus) => {
+    await updateDoc(doc(db, "users", userId), { accessStatus: newStatus });
+};
+
+// Admin Distribute Stock (Direct Add)
 export const addStockToDriver = async (adminId, driverId, quantity) => {
     const driverRef = doc(db, "users", driverId);
     const logRef = doc(collection(db, "inventory_log"));
     
     try {
+        await runTransaction(db, async (t) => {
+            const d = await t.get(driverRef);
+            if(!d.exists()) throw "Driver not found";
+            t.update(driverRef, { currentStock: (d.data().currentStock||0) + parseInt(quantity) });
+        });
+        return { success: true };
+    } catch(e) { return { success: false, error: e }; }
+};
+
+export const restockDriver = async (adminId, driverId, quantity) => {
+    const driverRef = doc(db, "users", driverId);
+    const logRef = doc(collection(db, "inventory_log"));
+    // Also resolve any pending requests for this driver implicitly? 
+    // For now, let's keep it manual.
+
+    try {
         await runTransaction(db, async (transaction) => {
             const driverDoc = await transaction.get(driverRef);
             if (!driverDoc.exists()) throw "Driver not found";
-            
-            const currentStock = driverDoc.data().currentStock || 0;
-            const newStock = currentStock + parseInt(quantity);
+            const newStock = (driverDoc.data().currentStock || 0) + parseInt(quantity);
             
             transaction.update(driverRef, { currentStock: newStock });
-            
             transaction.set(logRef, {
                 type: 'restock',
-                adminId, driverId, quantity: parseInt(quantity), timestamp: serverTimestamp()
+                adminId, driverId,
+                quantity: parseInt(quantity),
+                timestamp: serverTimestamp()
             });
         });
         return { success: true };
@@ -58,43 +74,13 @@ export const addStockToDriver = async (adminId, driverId, quantity) => {
     }
 };
 
-// 2. Driver -> Driver (Transfer)
-export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
-    const fromRef = doc(db, "users", fromId);
-    const toRef = doc(db, "users", toId);
-    
-    try {
-        await runTransaction(db, async (t) => {
-            const fromDoc = await t.get(fromRef);
-            const toDoc = await t.get(toRef);
-            if (!fromDoc.exists() || !toDoc.exists()) throw "Drivers not found";
-
-            const fromData = fromDoc.data();
-            const toData = toDoc.data();
-
-            t.update(fromRef, {
-                currentStock: (fromData.currentStock || 0) - parseInt(quantity || 0),
-                currentDebt: (fromData.currentDebt || 0) - parseInt(debtAmount || 0)
-            });
-
-            t.update(toRef, {
-                currentStock: (toData.currentStock || 0) + parseInt(quantity || 0),
-                currentDebt: (toData.currentDebt || 0) + parseInt(debtAmount || 0)
-            });
-        });
-        return { success: true };
-    } catch (e) {
-        return { success: false, error: e };
-    }
-};
-
-// 3. Driver -> Warehouse (Collection)
+// Admin Collect (Return stock / Pay debt)
 export const adminCollectAssets = async (driverId, stockToCollect, debtToCollect) => {
     const driverRef = doc(db, "users", driverId);
     try {
         await runTransaction(db, async (t) => {
             const d = await t.get(driverRef);
-            if (!d.exists()) throw "Driver not found";
+            if(!d.exists()) throw "Driver not found";
             
             const currentStock = d.data().currentStock || 0;
             const currentDebt = d.data().currentDebt || 0;
@@ -113,12 +99,29 @@ export const adminCollectAssets = async (driverId, stockToCollect, debtToCollect
     }
 };
 
-// --- USER & SCHEDULE ---
-
-export const updateUserStatus = async (userId, newStatus) => {
-    await updateDoc(doc(db, "users", userId), { accessStatus: newStatus });
+// Peer-to-Peer Transfer
+export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
+    const fromRef = doc(db, "users", fromId);
+    const toRef = doc(db, "users", toId);
+    try {
+        await runTransaction(db, async (t) => {
+            const f = await t.get(fromRef);
+            const target = await t.get(toRef);
+            
+            t.update(fromRef, {
+                currentStock: (f.data().currentStock||0) - quantity,
+                currentDebt: (f.data().currentDebt||0) - debtAmount
+            });
+            t.update(toRef, {
+                currentStock: (target.data().currentStock||0) + quantity,
+                currentDebt: (target.data().currentDebt||0) + debtAmount
+            });
+        });
+        return { success: true };
+    } catch(e) { return { success: false, error: e }; }
 };
 
+// Resolve Stock Request
 export const resolveStockRequest = async (reqId) => {
     await updateDoc(doc(db, "stock_requests", reqId), { status: 'completed' });
 };
@@ -127,12 +130,18 @@ export const dismissStockRequest = async (reqId) => {
     await deleteDoc(doc(db, "stock_requests", reqId));
 };
 
+// --- SCHEDULE MANAGEMENT ---
+
 export const assignShift = async (driverId, shiftData) => {
+    // shiftData: { date: 'YYYY-MM-DD', start: 'HH:MM', end: 'HH:MM' }
     const userRef = doc(db, "users", driverId);
     const userDoc = await getDoc(userRef);
     let shifts = userDoc.data().shifts || [];
+    
+    // Remove if exists (Edit logic)
     shifts = shifts.filter(s => !(s.date === shiftData.date && s.start === shiftData.start));
     shifts.push(shiftData);
+    
     await updateDoc(userRef, { shifts });
 };
 

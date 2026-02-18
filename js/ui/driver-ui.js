@@ -1,5 +1,24 @@
+<<<<<<< HEAD
 import { processSale, requestStock, saveVehicleInfo, requestCover, subscribeToAllCoverRequests, acceptCoverRequest, getDriverStats } from '../services/driver-service.js';
 import { subscribeToPendingOrders, subscribeToDriverActiveOrders, markArrived, completeOrder, acceptOrder } from '../services/order-service.js';
+=======
+import { 
+    processSale, 
+    requestStock, 
+    saveVehicleInfo, 
+    requestCover, 
+    subscribeToAllCoverRequests, 
+    acceptCoverRequest, 
+    getDriverStats 
+} from '../services/driver-service.js';
+import { 
+    subscribeToPendingOrders, 
+    subscribeToDriverActiveOrders, 
+    markArrived, 
+    completeOrder, 
+    acceptOrder 
+} from '../services/order-service.js';
+>>>>>>> parent of c60ae61 (v2)
 import { logoutUser } from '../services/auth-manager.js';
 import { db, doc, onSnapshot, updateDoc } from '../services/firebase.js';
 import { formatDate, formatTime } from '../utils/formatters.js';
@@ -11,11 +30,16 @@ let activeOrder = null;
 let cachedCoverRequests = [];
 
 export const renderDriverDashboard = (user) => {
+<<<<<<< HEAD
     // Live User Data
+=======
+    // 1. Live User Data
+>>>>>>> parent of c60ae61 (v2)
     onSnapshot(doc(db, "users", user.uid), (snap) => {
         currentUserData = snap.data();
         updateDashboardUI(currentUserData);
     });
+<<<<<<< HEAD
 
     // Listen to Cover Requests for Calendar
     subscribeToAllCoverRequests((reqs) => {
@@ -24,7 +48,18 @@ export const renderDriverDashboard = (user) => {
             renderDriverCalendar(user); // Re-render if looking at calendar
         }
     });
+=======
+>>>>>>> parent of c60ae61 (v2)
 
+    // 2. Cover Requests (Calendar)
+    subscribeToAllCoverRequests((reqs) => {
+        cachedCoverRequests = reqs;
+        if(!document.getElementById('view-schedule').classList.contains('hidden')) {
+            renderDriverCalendar(user); 
+        }
+    });
+
+    // 3. UI
     appRoot.innerHTML = `
         <div class="min-h-screen bg-gray-100 dark:bg-gray-900 pb-24 transition-colors duration-200">
             <header class="bg-blue-600 dark:bg-gray-800 text-white p-4 sticky top-0 z-40 shadow-md flex justify-between items-center">
@@ -39,6 +74,7 @@ export const renderDriverDashboard = (user) => {
             </header>
 
             <nav class="fixed bottom-0 left-0 w-full bg-white dark:bg-gray-800 border-t dark:border-gray-700 p-2 z-50 flex justify-around shadow-lg">
+<<<<<<< HEAD
                 <button class="nav-btn flex flex-col items-center p-2 text-blue-600 dark:text-blue-400" data-target="dashboard">
                     <i data-lucide="layout-dashboard" class="w-6 h-6"></i><span class="text-[10px] mt-1">Home</span>
                 </button>
@@ -81,10 +117,20 @@ export const renderDriverDashboard = (user) => {
                     </div>
 
                     <div class="grid grid-cols-2 gap-3 mt-4">
+=======
+                <button class="nav-btn flex flex-col items-center p-2 text-blue-600 dark:text-blue-400 transition" data-target="dashboard"><i data-lucide="layout-dashboard" class="w-6 h-6"></i><span class="text-[10px] mt-1">Home</span></button>
+                <button class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-blue-500 transition" data-target="schedule"><i data-lucide="calendar" class="w-6 h-6"></i><span class="text-[10px] mt-1">Schedule</span></button>
+                <button class="nav-btn flex flex-col items-center p-2 text-gray-400 hover:text-blue-500 transition" data-target="summary"><i data-lucide="bar-chart-2" class="w-6 h-6"></i><span class="text-[10px] mt-1">Summary</span></button>
+            </nav>
+
+            <main class="p-4 max-w-md mx-auto space-y-4 mb-16">
+                <div id="view-dashboard" class="view-section animate-fadeIn">
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+>>>>>>> parent of c60ae61 (v2)
                         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <h2 class="text-gray-500 text-xs uppercase">Stock</h2>
                             <div class="text-3xl font-bold dark:text-white" id="display-stock">--</div>
-                            <button id="btn-req-stock" class="text-xs text-blue-600 mt-1 font-bold">+ Request</button>
+                            <button id="btn-req-stock" class="text-xs text-blue-600 mt-1 font-bold flex items-center hover:text-blue-800"><i data-lucide="plus" class="w-3 h-3 mr-1"></i> Request</button>
                         </div>
                         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <h2 class="text-gray-500 text-xs uppercase">Debt</h2>
@@ -92,15 +138,64 @@ export const renderDriverDashboard = (user) => {
                         </div>
                     </div>
 
+<<<<<<< HEAD
                     <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border border-gray-100 dark:border-gray-700 mt-4">
                         <h2 class="text-gray-500 text-xs uppercase mb-3 font-bold">Walk-up Sale</h2>
                         <div class="grid grid-cols-4 gap-2">
                              ${[1,2,3,4].map(n => `<button class="sale-btn p-2 border rounded bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 hover:shadow-md active:scale-95" data-qty="${n}"><div class="text-sm font-bold text-orange-600 dark:text-orange-400">${n}</div></button>`).join('')}
+=======
+                    <div id="active-delivery-card" class="hidden bg-blue-600 text-white p-5 rounded-xl shadow-lg relative overflow-hidden mb-4">
+                        <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="map-pin" class="w-24 h-24"></i></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-2">
+                                <h2 class="font-bold text-lg">Current Job</h2>
+                                <span class="bg-white/20 px-2 py-1 rounded text-xs font-bold" id="active-status">On the way</span>
+                            </div>
+                            <div class="mb-4">
+                                <div class="text-2xl font-bold" id="active-address">...</div>
+                                <div class="text-blue-100 text-sm" id="active-details">...</div>
+                                <div class="text-yellow-300 font-bold text-lg mt-1" id="active-price">...</div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <button id="btn-job-arrived" class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-2 rounded-lg transition">Arrived</button>
+                                <button id="btn-job-complete" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 rounded-lg hidden transition">Complete</button>
+                            </div>
+                            <button id="btn-update-eta" class="w-full mt-2 text-xs text-blue-200 underline hover:text-white">Update ETA</button>
+                        </div>
+                    </div>
+
+                    <div id="incoming-section" class="mb-6">
+                        <h2 class="text-gray-500 text-xs uppercase font-bold mb-2 flex justify-between">
+                            <span>Incoming Jobs</span> <span id="job-count" class="bg-red-500 text-white px-1.5 rounded-full text-[10px] hidden">0</span>
+                        </h2>
+                        <div id="incoming-list" class="space-y-2"></div>
+                    </div>
+
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border border-gray-100 dark:border-gray-700">
+                        <h2 class="text-gray-500 text-xs uppercase mb-3 font-bold">Manual Sales</h2>
+                        
+                        <div class="mb-4">
+                            <span class="text-[10px] uppercase font-bold text-green-600 mb-1 block">Full Price (Earn $20/ea)</span>
+                            <div class="grid grid-cols-4 gap-2">
+                                ${[1,2,3,4].map(n => `<button class="sale-btn p-2 border rounded bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:shadow-md active:scale-95 transition" data-qty="${n}" data-type="standard"><div class="text-sm font-bold text-green-700 dark:text-green-400">${n}</div><div class="text-[10px] text-gray-500 dark:text-gray-400">$${n*80}</div></button>`).join('')}
+                            </div>
+                        </div>
+
+                        <div>
+                            <span class="text-[10px] uppercase font-bold text-orange-600 mb-1 block">Deal Price (Tiered)</span>
+                            <div class="grid grid-cols-4 gap-2">
+                                ${[1,2,3,4].map(n => {
+                                    const prices = {1:80, 2:150, 3:220, 4:280};
+                                    return `<button class="sale-btn p-2 border rounded bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 hover:shadow-md active:scale-95 transition" data-qty="${n}" data-type="deal"><div class="text-sm font-bold text-orange-600 dark:text-orange-400">${n}</div><div class="text-[10px] text-gray-500 dark:text-gray-400">$${prices[n]}</div></button>`
+                                }).join('')}
+                            </div>
+>>>>>>> parent of c60ae61 (v2)
                         </div>
                     </div>
                 </div>
 
                 <div id="view-schedule" class="view-section hidden animate-fadeIn">
+<<<<<<< HEAD
                     <div class="flex justify-between items-center mb-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm">
                         <button id="drv-cal-prev" class="p-1"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
                         <span id="drv-cal-month" class="font-bold dark:text-white">Month</span>
@@ -112,6 +207,17 @@ export const renderDriverDashboard = (user) => {
                     <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
                         <h3 class="font-bold text-sm text-blue-800 dark:text-blue-300 mb-1">Calendar Key</h3>
                         <div class="flex gap-4 text-xs">
+=======
+                    <div class="flex justify-between items-center mb-4 bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                        <button id="drv-cal-prev" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><i data-lucide="chevron-left" class="w-5 h-5 dark:text-white"></i></button>
+                        <span id="drv-cal-month" class="font-bold dark:text-white">Month</span>
+                        <button id="drv-cal-next" class="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"><i data-lucide="chevron-right" class="w-5 h-5 dark:text-white"></i></button>
+                    </div>
+                    <div id="drv-calendar" class="calendar-grid bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm border border-gray-100 dark:border-gray-700 mb-4"></div>
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
+                        <h3 class="font-bold text-sm text-blue-800 dark:text-blue-300 mb-1">Key</h3>
+                        <div class="flex gap-4 text-xs dark:text-gray-300">
+>>>>>>> parent of c60ae61 (v2)
                             <span class="flex items-center"><div class="w-3 h-3 bg-blue-500 rounded mr-1"></div> My Shift</span>
                             <span class="flex items-center"><div class="w-3 h-3 bg-red-500 rounded mr-1"></div> Open Cover</span>
                         </div>
@@ -129,16 +235,23 @@ export const renderDriverDashboard = (user) => {
                             <span class="font-bold" id="weekly-units-val">0</span> Units Sold This Week
                         </div>
                     </div>
+<<<<<<< HEAD
 
                     <h3 class="font-bold text-gray-800 dark:text-white mb-3">Recent Activity</h3>
                     <div id="summary-history-list" class="space-y-3 pb-10">
                         <p class="text-center text-gray-400 text-sm">Loading history...</p>
+=======
+                    <h3 class="font-bold text-gray-800 dark:text-white mb-3">Recent Activity</h3>
+                    <div id="summary-history-list" class="space-y-3 pb-10">
+                        <div class="text-center text-gray-400 text-sm py-4">Loading history...</div>
+>>>>>>> parent of c60ae61 (v2)
                     </div>
                 </div>
 
             </main>
 
             <div id="settings-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden backdrop-blur-sm">
+<<<<<<< HEAD
                 <div class="bg-white dark:bg-gray-800 w-11/12 max-w-sm p-6 rounded-2xl">
                     <h2 class="text-xl font-bold dark:text-white mb-4">Settings</h2>
                     <div class="mb-4">
@@ -149,10 +262,28 @@ export const renderDriverDashboard = (user) => {
                     <button id="btn-save-veh" class="w-full bg-blue-600 text-white py-2 rounded font-bold mb-4">Save</button>
                     <button id="driver-logout" class="w-full text-red-500 py-2">Sign Out</button>
                     <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="w-full text-gray-400 py-2 mt-2">Close</button>
+=======
+                <div class="bg-white dark:bg-gray-800 w-11/12 max-w-sm p-6 rounded-2xl shadow-xl">
+                    <h2 class="text-xl font-bold dark:text-white mb-4">Settings</h2>
+                    <div class="mb-4">
+                        <label class="text-xs font-bold text-gray-500 uppercase">My Vehicle</label>
+                        <input type="text" id="veh-color" placeholder="Color" class="w-full mt-1 p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600 mb-2">
+                        <input type="text" id="veh-model" placeholder="Model" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                        <button id="btn-save-veh" class="w-full bg-blue-600 text-white py-2 rounded font-bold mt-2 hover:bg-blue-700 transition">Save Vehicle</button>
+                    </div>
+                    <hr class="border-gray-200 dark:border-gray-700 my-4">
+                    <button onclick="window.toggleTheme()" class="w-full flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg mb-2 hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+                        <span class="font-medium dark:text-white">Dark Mode</span>
+                        <i data-lucide="moon" class="w-5 h-5 text-gray-500 dark:text-gray-300"></i>
+                    </button>
+                    <button id="driver-logout" class="w-full flex justify-center items-center p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg font-bold hover:bg-red-200 dark:hover:bg-red-900/50 transition">Sign Out</button>
+                    <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="w-full text-gray-400 py-2 mt-2 hover:text-gray-600">Close</button>
+>>>>>>> parent of c60ae61 (v2)
                 </div>
             </div>
 
             <div id="cover-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden backdrop-blur-sm">
+<<<<<<< HEAD
                 <div class="bg-white dark:bg-gray-800 w-11/12 max-w-sm p-6 rounded-2xl">
                     <h3 class="font-bold text-lg dark:text-white mb-2">Manage Shift</h3>
                     <p id="cover-shift-info" class="text-sm text-gray-500 mb-4">...</p>
@@ -172,6 +303,24 @@ export const renderDriverDashboard = (user) => {
                     </div>
 
                     <button onclick="document.getElementById('cover-modal').classList.add('hidden')" class="w-full text-gray-400 mt-4">Cancel</button>
+=======
+                <div class="bg-white dark:bg-gray-800 w-11/12 max-w-sm p-6 rounded-2xl shadow-xl">
+                    <h3 class="font-bold text-lg dark:text-white mb-2">Manage Shift</h3>
+                    <p id="cover-shift-info" class="text-sm text-gray-500 mb-4">...</p>
+                    <div id="cover-form-group">
+                        <label class="text-xs font-bold text-gray-500">Request Cover (Time Range)</label>
+                        <div class="grid grid-cols-2 gap-2 mt-1 mb-4">
+                            <input type="time" id="cover-start" class="border rounded p-2 dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                            <input type="time" id="cover-end" class="border rounded p-2 dark:bg-gray-700 dark:text-white dark:border-gray-600">
+                        </div>
+                        <button id="btn-submit-cover" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded transition">Request Cover</button>
+                    </div>
+                    <div id="take-shift-group" class="hidden">
+                        <p class="text-sm text-blue-600 dark:text-blue-400 mb-4 font-medium">This shift is available. Take it?</p>
+                        <button id="btn-take-shift" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded transition">Accept Shift</button>
+                    </div>
+                    <button onclick="document.getElementById('cover-modal').classList.add('hidden')" class="w-full text-gray-400 mt-4 hover:text-gray-600">Cancel</button>
+>>>>>>> parent of c60ae61 (v2)
                 </div>
             </div>
         </div>
@@ -180,7 +329,11 @@ export const renderDriverDashboard = (user) => {
     lucide.createIcons();
     attachEvents(user);
     initOrderListeners(user);
+<<<<<<< HEAD
     loadSummaryData(user); // Initial Load
+=======
+    loadSummaryData(user);
+>>>>>>> parent of c60ae61 (v2)
 };
 
 // --- NAVIGATION & TABS ---
@@ -189,11 +342,16 @@ function attachEvents(user) {
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             const target = e.currentTarget.dataset.target;
+<<<<<<< HEAD
             // Update UI Colors
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-blue-600', 'text-gray-400'));
             e.currentTarget.classList.replace('text-gray-400', 'text-blue-600');
             
             // Show Section
+=======
+            document.querySelectorAll('.nav-btn').forEach(b => { b.classList.remove('text-blue-600', 'dark:text-blue-400'); b.classList.add('text-gray-400'); });
+            e.currentTarget.classList.remove('text-gray-400'); e.currentTarget.classList.add('text-blue-600', 'dark:text-blue-400');
+>>>>>>> parent of c60ae61 (v2)
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById(`view-${target}`).classList.remove('hidden');
 
@@ -208,6 +366,7 @@ function attachEvents(user) {
     document.getElementById('btn-save-veh').addEventListener('click', async () => {
         const color = document.getElementById('veh-color').value;
         const model = document.getElementById('veh-model').value;
+<<<<<<< HEAD
         if(color && model) {
             await saveVehicleInfo(user.uid, { color, model });
             showToast("Vehicle Saved");
@@ -236,6 +395,96 @@ function attachEvents(user) {
                 showToast("Sale Recorded");
             }
         });
+=======
+        if(color && model) { await saveVehicleInfo(user.uid, { color, model }); showToast("Vehicle Saved"); document.getElementById('settings-modal').classList.add('hidden'); }
+    });
+
+    // Actions
+    document.getElementById('btn-status-toggle').addEventListener('click', async () => { const newStatus = (currentUserData.onlineStatus === 'online') ? 'offline' : 'online'; await updateDoc(doc(db, "users", user.uid), { onlineStatus: newStatus }); });
+    document.getElementById('btn-req-stock').addEventListener('click', async () => { if(confirm("Request Stock from Admin?")) { await requestStock(user.uid, user.displayName); showToast("Request Sent"); }});
+
+    // Manual Sales (The key logic update)
+    document.querySelectorAll('.sale-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const btnEl = e.target.closest('button');
+            const qty = parseInt(btnEl.dataset.qty);
+            const type = btnEl.dataset.type; 
+            const price = type === 'standard' ? qty * 80 : ({1:80,2:150,3:220,4:280}[qty]);
+            if(confirm(`Confirm ${type.toUpperCase()} Sale?\nQty: ${qty}\nPrice: $${price}`)) {
+                const res = await processSale(user.uid, qty, type); 
+                if(res.success) showToast(`Sold! Earned $${res.metrics.driverProfit}`); else alert("Sale failed: " + res.error);
+            }
+        });
+    });
+
+    // Calendar
+    document.getElementById('drv-cal-prev').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth()-1); renderDriverCalendar(user); });
+    document.getElementById('drv-cal-next').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth()+1); renderDriverCalendar(user); });
+    document.getElementById('btn-submit-cover').addEventListener('click', async () => {
+        const start = document.getElementById('cover-start').value; const end = document.getElementById('cover-end').value; const meta = JSON.parse(document.getElementById('cover-modal').dataset.shift);
+        if(start && end) { await requestCover(user.uid, user.displayName, meta, start, end); showToast("Cover Requested"); document.getElementById('cover-modal').classList.add('hidden'); }
+    });
+    document.getElementById('btn-take-shift').addEventListener('click', async () => {
+        const reqId = document.getElementById('cover-modal').dataset.reqId;
+        if(reqId) { const res = await acceptCoverRequest(reqId, user.uid, user.displayName); if(res.success) showToast("Shift Accepted!"); else alert(res.error); document.getElementById('cover-modal').classList.add('hidden'); }
+    });
+}
+
+function initOrderListeners(user) {
+    subscribeToDriverActiveOrders(user.uid, (orders) => {
+        if (orders.length > 0) {
+            activeOrder = orders[0];
+            document.getElementById('active-delivery-card').classList.remove('hidden');
+            document.getElementById('incoming-section').classList.add('hidden');
+            
+            document.getElementById('active-address').innerText = activeOrder.deliveryAddress;
+            document.getElementById('active-details').innerText = `${activeOrder.quantity} Items • ${activeOrder.buyerName || 'Cust'}`;
+            document.getElementById('active-price').innerText = `$${activeOrder.totalPrice} Cash`;
+            
+            const btnArrived = document.getElementById('btn-job-arrived');
+            const btnComplete = document.getElementById('btn-job-complete');
+            const statusLabel = document.getElementById('active-status');
+
+            if(activeOrder.status === 'arrived') {
+                btnArrived.classList.add('hidden'); btnComplete.classList.remove('hidden');
+                statusLabel.innerText = "Arrived"; statusLabel.className = "bg-yellow-500 text-white px-2 py-1 rounded text-xs font-bold";
+            } else {
+                btnArrived.classList.remove('hidden'); btnComplete.classList.add('hidden');
+                statusLabel.innerText = "On the way"; statusLabel.className = "bg-white/20 px-2 py-1 rounded text-xs font-bold";
+            }
+
+            btnArrived.onclick = async () => { if(confirm("Confirm arrival?")) await markArrived(activeOrder.id); };
+            btnComplete.onclick = async () => { if(confirm(`Complete job?`)) { await processSale(user.uid, activeOrder.quantity, 'deal'); await completeOrder(activeOrder.id); showToast(`Job Completed!`); }};
+            document.getElementById('btn-update-eta').onclick = async () => { const eta = prompt("Update ETA:"); if(eta) { await updateDoc(doc(db, 'orders', activeOrder.id), { eta: eta }); showToast("ETA Updated"); }};
+        } else {
+            activeOrder = null;
+            document.getElementById('active-delivery-card').classList.add('hidden');
+            document.getElementById('incoming-section').classList.remove('hidden');
+        }
+    });
+
+    subscribeToPendingOrders((orders) => {
+        const list = document.getElementById('incoming-list');
+        const count = document.getElementById('job-count');
+        list.innerHTML = '';
+        if(orders.length > 0) {
+            count.innerText = orders.length; count.classList.remove('hidden');
+            orders.forEach(o => {
+                const div = document.createElement('div');
+                div.className = "bg-white dark:bg-gray-800 p-3 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center";
+                div.innerHTML = `<div><div class="font-bold dark:text-white">${o.deliveryAddress}</div><div class="text-xs text-gray-500">${o.quantity} items • <span class="text-green-600 font-bold">$${o.totalPrice}</span></div></div><button class="bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded shadow hover:bg-blue-700 btn-accept-job" data-id="${o.id}">Accept</button>`;
+                list.appendChild(div);
+            });
+            document.querySelectorAll('.btn-accept-job').forEach(b => {
+                b.addEventListener('click', async (e) => {
+                    if(!currentUserData.vehicle || !currentUserData.vehicle.model) return alert("Set vehicle details in Settings first!");
+                    const eta = prompt("Enter ETA:"); if(eta) { const veh = `${currentUserData.vehicle.color} ${currentUserData.vehicle.model}`; await acceptOrder(e.target.dataset.id, user.uid, user.displayName, veh, eta); }
+                });
+            });
+        } else {
+            count.classList.add('hidden'); list.innerHTML = '<div class="text-center text-gray-400 text-sm py-4 italic">No active orders available.</div>';
+        }
+>>>>>>> parent of c60ae61 (v2)
     });
 
     // Calendar & Cover
@@ -277,6 +526,7 @@ async function loadSummaryData(user) {
     // History List
     const list = document.getElementById('summary-history-list');
     list.innerHTML = '';
+<<<<<<< HEAD
     
     if(stats.history.length === 0) {
         list.innerHTML = '<div class="text-center text-gray-400 text-sm">No sales history yet.</div>';
@@ -296,6 +546,16 @@ async function loadSummaryData(user) {
             </div>
             <div class="text-green-600 font-bold text-sm">+$${sale.driverProfit}</div>
         `;
+=======
+    if(stats.history.length === 0) return list.innerHTML = '<div class="text-center text-gray-400 text-sm">No recent sales.</div>';
+    
+    stats.history.slice(0, 30).forEach(sale => {
+        const el = document.createElement('div');
+        el.className = "bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center";
+        const isStandard = sale.type === 'standard';
+        const badgeColor = isStandard ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400';
+        el.innerHTML = `<div><div class="font-bold text-sm dark:text-white">${sale.quantity} Item(s) <span class="text-[10px] font-bold uppercase ml-1 px-1.5 py-0.5 rounded ${badgeColor}">${isStandard ? 'Full Price' : 'Deal'}</span></div><div class="text-xs text-gray-400 mt-1">${formatDate(sale.timestamp)} at ${formatTime(sale.timestamp)}</div></div><div class="text-right"><div class="text-[10px] text-gray-500 dark:text-gray-400">Profit</div><div class="text-green-600 dark:text-green-400 font-bold text-sm">+$${sale.driverProfit}</div></div>`;
+>>>>>>> parent of c60ae61 (v2)
         list.appendChild(el);
     });
 }
@@ -305,27 +565,29 @@ function renderDriverCalendar(user) {
     const grid = document.getElementById('drv-calendar');
     const label = document.getElementById('drv-cal-month');
     grid.innerHTML = '';
-    
     const year = calendarDate.getFullYear();
     const month = calendarDate.getMonth();
     label.innerText = new Date(year, month, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-
     const startDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
+<<<<<<< HEAD
 
+=======
+>>>>>>> parent of c60ae61 (v2)
     for(let i=0; i<startDay; i++) grid.innerHTML += `<div></div>`;
-
-    const myShifts = currentUserData.shifts || [];
-
     for(let d=1; d<=daysInMonth; d++) {
         const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+<<<<<<< HEAD
         
         // My Shifts
         const shifts = myShifts.filter(s => s.date === dateStr);
         // Open Cover Requests (from OTHERS)
+=======
+        const shifts = (currentUserData.shifts || []).filter(s => s.date === dateStr);
+>>>>>>> parent of c60ae61 (v2)
         const openCovers = cachedCoverRequests.filter(r => r.originalDate === dateStr && r.requesterUid !== user.uid);
-
         const dayEl = document.createElement('div');
+<<<<<<< HEAD
         dayEl.className = "calendar-day bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-1 min-h-[60px]";
         dayEl.innerHTML = `<div class="text-xs font-bold text-gray-400 mb-1">${d}</div>`;
         
@@ -347,12 +609,19 @@ function renderDriverCalendar(user) {
             dayEl.appendChild(bar);
         });
 
+=======
+        dayEl.className = "bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded p-1 min-h-[50px]";
+        dayEl.innerHTML = `<div class="text-xs font-bold text-gray-400 mb-1">${d}</div>`;
+        shifts.forEach(s => { const bar = document.createElement('div'); bar.className = "bg-blue-500 text-white cursor-pointer hover:bg-blue-600 mb-1 text-[10px] p-1 rounded truncate"; bar.innerText = `${s.start}-${s.end}`; bar.onclick = () => openCoverModal(s, 'request'); dayEl.appendChild(bar); });
+        openCovers.forEach(req => { const bar = document.createElement('div'); bar.className = "bg-red-500 text-white cursor-pointer hover:bg-red-600 mb-1 text-[10px] p-1 rounded animate-pulse truncate"; bar.innerText = `COVER: ${req.coverStart}-${req.coverEnd}`; bar.onclick = () => openCoverModal(req, 'take'); dayEl.appendChild(bar); });
+>>>>>>> parent of c60ae61 (v2)
         grid.appendChild(dayEl);
     }
 }
 
 function openCoverModal(data, type) {
     const modal = document.getElementById('cover-modal');
+<<<<<<< HEAD
     const title = document.getElementById('cover-shift-info');
     const reqForm = document.getElementById('cover-form-group');
     const takeForm = document.getElementById('take-shift-group');
@@ -376,6 +645,20 @@ function openCoverModal(data, type) {
         
         reqForm.classList.add('hidden');
         takeForm.classList.remove('hidden');
+=======
+    modal.classList.remove('hidden');
+    if (type === 'request') {
+        modal.dataset.shift = JSON.stringify(data);
+        document.getElementById('cover-shift-info').innerText = `My Shift: ${data.date} (${data.start}-${data.end})`;
+        document.getElementById('cover-form-group').classList.remove('hidden');
+        document.getElementById('take-shift-group').classList.add('hidden');
+        document.getElementById('cover-start').value = data.start; document.getElementById('cover-end').value = data.end;
+    } else {
+        modal.dataset.reqId = data.id;
+        document.getElementById('cover-shift-info').innerText = `Request from ${data.requesterName} on ${data.originalDate}`;
+        document.getElementById('cover-form-group').classList.add('hidden');
+        document.getElementById('take-shift-group').classList.remove('hidden');
+>>>>>>> parent of c60ae61 (v2)
     }
 }
 
@@ -448,17 +731,18 @@ function updateDashboardUI(data) {
     if(!data) return;
     document.getElementById('display-stock').innerText = data.currentStock || 0;
     document.getElementById('display-debt').innerText = `$${data.currentDebt || 0}`;
+<<<<<<< HEAD
     if(data.vehicle) {
         document.getElementById('veh-color').value = data.vehicle.color || '';
         document.getElementById('veh-model').value = data.vehicle.model || '';
     }
+=======
+    if(data.vehicle) { document.getElementById('veh-color').value = data.vehicle.color || ''; document.getElementById('veh-model').value = data.vehicle.model || ''; }
+>>>>>>> parent of c60ae61 (v2)
     const isOnline = data.onlineStatus === 'online';
     const dot = document.getElementById('status-dot');
     const txt = document.getElementById('status-text');
-    if(dot && txt) {
-        dot.className = `w-2 h-2 rounded-full mr-2 ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`;
-        txt.innerText = isOnline ? 'Online' : 'Offline';
-    }
+    if(dot && txt) { dot.className = `w-2 h-2 rounded-full mr-2 ${isOnline ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`; txt.innerText = isOnline ? 'Online' : 'Offline'; }
 }
 
 function showToast(msg) {

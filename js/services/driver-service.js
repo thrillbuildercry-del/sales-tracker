@@ -1,5 +1,6 @@
 import { db, doc, runTransaction, serverTimestamp, collection, addDoc, updateDoc, query, where, orderBy, onSnapshot, getDocs } from './firebase.js';
 import { calculateSaleMetrics } from '../utils/calculations.js';
+import { DRIVER_ECONOMICS } from '../config/constants.js';
 
 // --- SALES ---
 
@@ -32,7 +33,7 @@ export const processSale = async (userId, quantity, type = 'standard') => {
                 grossRevenue: metrics.grossRevenue,
                 debtIncrease: metrics.debtIncrease,
                 driverProfit: metrics.driverProfit,
-                type: type, 
+                type: type, // Stores 'standard' or 'deal' for reports
                 timestamp: serverTimestamp()
             });
         });
@@ -46,6 +47,7 @@ export const processSale = async (userId, quantity, type = 'standard') => {
 // --- STATS & HISTORY ---
 
 export const getDriverStats = async (userId) => {
+    // Fetch History
     const q = query(
         collection(db, "sales"), 
         where("driverId", "==", userId),
@@ -101,6 +103,7 @@ export const subscribeToAllCoverRequests = (callback) => {
 };
 
 export const acceptCoverRequest = async (reqId, accepterUid, accepterName) => {
+    // Logic to accept cover (simplified)
     const reqRef = doc(db, "cover_requests", reqId);
     await updateDoc(reqRef, { status: 'filled', filledByUid: accepterUid, filledByName: accepterName });
     return { success: true };

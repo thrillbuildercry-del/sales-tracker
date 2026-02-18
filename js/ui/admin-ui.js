@@ -1,351 +1,290 @@
-import { subscribeToDrivers, subscribeToStockRequests, subscribeToCoverRequests, addStockToDriver, p2pTransfer, assignShift, deleteShift, resolveStockRequest, dismissStockRequest, updateUserStatus } from '../services/admin-service.js';
-import { subscribeToPendingOrders } from '../services/order-service.js';
-import { getWeeklyReport } from '../services/report-service.js';
+import { subscribeToDrivers, updateUserStatus, addStockToDriver } from '../services/admin-service.js';
+import { subscribeToPendingOrders, assignDriverToOrder } from '../services/order-service.js';
+import { getWeeklyReport } from '../services/report-service.js'; // <--- NEW IMPORT
 import { logoutUser } from '../services/auth-manager.js';
 
 const appRoot = document.getElementById('app-root');
-let cachedDrivers = [];
-let calendarDate = new Date();
+let unsubscribeDrivers = null;
+let cachedDrivers = []; 
 
 export const renderAdminDashboard = (currentUser) => {
     appRoot.innerHTML = `
-        <div class="min-h-screen bg-gray-50 dark:bg-gray-900 pb-20 transition-colors duration-200">
+        <div class="min-h-screen bg-gray-50 pb-20">
             <header class="bg-gray-900 text-white p-4 sticky top-0 z-40 shadow-lg flex justify-between items-center">
-                <div>
-                    <h1 class="text-xl font-bold tracking-tight text-blue-400">BOSS DASHBOARD</h1>
-                    <p class="text-xs text-gray-400">${new Date().toDateString()}</p>
-                </div>
-                <div class="flex items-center gap-3">
-                    <button onclick="window.toggleTheme()" class="p-2 rounded-full bg-gray-800 hover:bg-gray-700 text-gray-300"><i data-lucide="moon" class="w-5 h-5"></i></button>
-                    <button id="admin-logout" class="text-xs bg-red-900 hover:bg-red-800 px-3 py-1.5 rounded font-bold transition">Logout</button>
-                </div>
+                <div><h1 class="text-xl font-bold text-yellow-500">Boss Mode</h1><p class="text-xs text-gray-400">Admin Dashboard</p></div>
+                <button id="admin-logout" class="text-sm bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded">Logout</button>
             </header>
 
-            <main class="p-4 max-w-4xl mx-auto">
-                <div id="admin-notifications" class="space-y-2 mb-4"></div>
-
-                <div class="flex space-x-1 mb-6 bg-white dark:bg-gray-800 p-1 rounded-xl shadow-sm overflow-x-auto hide-scrollbar">
-                    ${['Team', 'Orders', 'Manage', 'Schedule', 'Reports'].map(tab => `
-                        <button class="nav-tab flex-1 py-2 px-4 rounded-lg font-bold text-xs whitespace-nowrap transition hover:bg-gray-100 dark:hover:bg-gray-700 dark:text-gray-300" data-target="${tab.toLowerCase()}">${tab}</button>
-                    `).join('')}
-                </div>
-
-                <div id="view-team" class="tab-content active space-y-4">
-                    <div class="grid grid-cols-2 gap-4">
-                         <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                            <div class="text-xs text-gray-500 uppercase">Total Items Sold (7d)</div>
-                            <div class="text-2xl font-bold text-blue-600" id="stat-total-items">--</div>
-                        </div>
-                        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                            <div class="text-xs text-gray-500 uppercase">Revenue (7d)</div>
-                            <div class="text-2xl font-bold text-green-600" id="stat-total-rev">--</div>
-                        </div>
-                    </div>
-                    <div id="driver-list" class="space-y-3">Loading Team...</div>
-                </div>
-
-                <div id="view-orders" class="tab-content">
-                    <h3 class="font-bold text-gray-800 dark:text-white mb-4">Live Orders</h3>
-                    <div id="pending-orders-list" class="space-y-3"></div>
-                </div>
-
-                <div id="view-manage" class="tab-content space-y-6">
-                    <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border dark:border-gray-700">
-                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="package-plus" class="w-4 h-4 mr-2"></i> Add Stock</h3>
-                        <div class="flex gap-2">
-                            <select id="restock-driver" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
-                            <input type="number" id="restock-qty" placeholder="Qty" class="w-20 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
-                        </div>
-                        <button id="btn-admin-restock" class="mt-3 w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition">Add Stock</button>
-                    </div>
-
-                    <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border dark:border-gray-700">
-                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="arrow-right-left" class="w-4 h-4 mr-2"></i> Transfer Assets</h3>
-                        <div class="flex items-center gap-2 mb-2">
-                            <select id="trans-from" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
-                            <i data-lucide="arrow-right" class="w-4 h-4 text-gray-400"></i>
-                            <select id="trans-to" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
-                        </div>
-                        <div class="flex gap-2">
-                            <input type="number" id="trans-qty" placeholder="Items" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
-                            <input type="number" id="trans-debt" placeholder="Debt $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
-                        </div>
-                        <button id="btn-admin-transfer" class="mt-3 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg transition">Transfer</button>
-                    </div>
-                </div>
-
-                <div id="view-schedule" class="tab-content">
-                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border dark:border-gray-700 mb-6">
-                        <h3 class="font-bold dark:text-white mb-3">Assign Shift</h3>
-                        <div class="grid grid-cols-2 gap-2 mb-2">
-                            <select id="sched-driver" class="w-full p-2 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded text-sm dark:text-white driver-select"></select>
-                            <input type="date" id="sched-date" class="w-full p-2 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded text-sm dark:text-white">
-                        </div>
-                        <div class="grid grid-cols-2 gap-2 mb-3">
-                            <input type="time" id="sched-start" class="w-full p-2 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded text-sm dark:text-white">
-                            <input type="time" id="sched-end" class="w-full p-2 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded text-sm dark:text-white">
-                        </div>
-                        <button id="btn-assign-shift" class="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg transition">Assign</button>
-                    </div>
+            <main class="p-4 space-y-6">
+                
+                <div class="mb-8">
+                    <h2 class="text-lg font-bold text-gray-800 mb-4">Weekly Performance</h2>
                     
-                    <div class="flex justify-between items-center mb-2">
-                        <button id="cal-prev" class="p-1 bg-gray-200 dark:bg-gray-700 rounded"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-                        <span id="cal-month" class="font-bold text-sm dark:text-white">Month</span>
-                        <button id="cal-next" class="p-1 bg-gray-200 dark:bg-gray-700 rounded"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+                            <p class="text-gray-500 text-xs uppercase">7-Day Revenue</p>
+                            <p class="text-2xl font-bold text-gray-800" id="report-revenue">Loading...</p>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+                            <p class="text-gray-500 text-xs uppercase">Items Sold</p>
+                            <p class="text-2xl font-bold text-gray-800" id="report-items">Loading...</p>
+                        </div>
                     </div>
-                    <div id="admin-calendar" class="calendar-grid bg-white dark:bg-gray-800 rounded border dark:border-gray-700 p-1"></div>
-                    <div id="cal-details" class="mt-2 bg-white dark:bg-gray-800 p-3 rounded shadow-sm text-sm hidden"></div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <h3 class="text-sm font-bold text-gray-500 mb-2">Revenue by Day</h3>
+                            <canvas id="chart-daily"></canvas>
+                        </div>
+                        <div class="bg-white p-4 rounded-lg shadow">
+                            <h3 class="text-sm font-bold text-gray-500 mb-2">Top Drivers</h3>
+                            <canvas id="chart-drivers"></canvas>
+                        </div>
+                    </div>
                 </div>
 
-                <div id="view-reports" class="tab-content">
-                    <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border dark:border-gray-700 h-64">
-                         <canvas id="chart-daily"></canvas>
+                <div id="pending-section" class="hidden">
+                    <h2 class="text-lg font-bold text-gray-800 mb-2 text-red-600">Action Required</h2>
+                    <div id="pending-list" class="space-y-3"></div>
+                </div>
+
+                <div id="orders-section">
+                    <h2 class="text-lg font-bold text-gray-800 mb-2">Incoming Orders</h2>
+                    <div id="pending-orders-list" class="space-y-3">
+                        <div class="text-center py-4 text-gray-400">Waiting for orders...</div>
                     </div>
+                </div>
+
+                <div>
+                    <h2 class="text-lg font-bold text-gray-800 mb-2">Team Management</h2>
+                    <div id="driver-list" class="space-y-3"><div class="text-center py-8 text-gray-400">Loading Team...</div></div>
                 </div>
             </main>
+
+            <div id="restock-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 z-50 flex items-center justify-center p-4">
+                <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6">
+                    <h3 class="text-xl font-bold mb-4">Add Stock</h3>
+                    <p class="text-sm text-gray-500 mb-4">Driver: <span id="modal-driver-name" class="font-bold text-black"></span></p>
+                    <input type="number" id="restock-qty" class="w-full border-2 border-gray-300 rounded-lg p-3 text-lg font-bold mb-4" placeholder="Amount">
+                    <div class="flex gap-3">
+                        <button id="close-restock" class="flex-1 bg-gray-200 py-3 rounded-lg font-semibold">Cancel</button>
+                        <button id="confirm-restock" class="flex-1 bg-blue-600 text-white py-3 rounded-lg font-semibold">Confirm</button>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
-    
-    // Initial Render Actions
-    lucide.createIcons();
-    setupTabs();
-    setupCalendar();
-    
-    // Listeners
-    document.getElementById('admin-logout').addEventListener('click', () => logoutUser());
 
-    subscribeToDrivers((drivers) => {
-        cachedDrivers = drivers;
-        renderDriverList(drivers);
-        populateDropdowns();
-        renderCalendarGrid(); // Refresh calendar with new shift data
-        loadReportData();
+    attachAdminEvents(currentUser);
+
+    // Initialize Listeners
+    unsubscribeDrivers = subscribeToDrivers((drivers) => {
+        cachedDrivers = drivers; 
+        renderDriverLists(drivers, currentUser);
+        populateDriverDropdowns();
+        
+        // Reload reports when driver list loads (to get names for charts)
+        loadReports(); 
     });
 
-    subscribeToStockRequests(renderStockRequests);
-    
-    // Button Bindings
-    document.getElementById('btn-admin-restock').addEventListener('click', async () => {
-        const uid = document.getElementById('restock-driver').value;
-        const qty = document.getElementById('restock-qty').value;
-        if(uid && qty) {
-            await addStockToDriver(currentUser.uid, uid, qty);
-            showToast("Stock Added");
-            document.getElementById('restock-qty').value = '';
-        }
-    });
-
-    document.getElementById('btn-admin-transfer').addEventListener('click', async () => {
-        const f = document.getElementById('trans-from').value;
-        const t = document.getElementById('trans-to').value;
-        const q = parseInt(document.getElementById('trans-qty').value) || 0;
-        const d = parseInt(document.getElementById('trans-debt').value) || 0;
-        if(f && t && (q>0 || d>0)) {
-            await p2pTransfer(f, t, q, d);
-            showToast("Transfer Complete");
-            document.getElementById('trans-qty').value = '';
-            document.getElementById('trans-debt').value = '';
-        }
-    });
-
-    document.getElementById('btn-assign-shift').addEventListener('click', async () => {
-        const uid = document.getElementById('sched-driver').value;
-        const date = document.getElementById('sched-date').value;
-        const start = document.getElementById('sched-start').value;
-        const end = document.getElementById('sched-end').value;
-        if(uid && date && start && end) {
-            await assignShift(uid, { date, start, end });
-            showToast("Shift Assigned");
-        }
+    subscribeToPendingOrders((orders) => {
+        renderPendingOrders(orders);
     });
 };
 
-// --- RENDER HELPERS ---
+async function loadReports() {
+    try {
+        const data = await getWeeklyReport();
 
-function setupTabs() {
-    const tabs = document.querySelectorAll('.nav-tab');
-    const contents = document.querySelectorAll('.tab-content');
-    
-    tabs[0].classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'); // Active state for first tab
+        // Update Text Cards
+        const revEl = document.getElementById('report-revenue');
+        const itemEl = document.getElementById('report-items');
+        if(revEl) revEl.innerText = `$${data.totalRevenue}`;
+        if(itemEl) itemEl.innerText = data.totalItems;
 
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            // Reset
-            tabs.forEach(t => t.classList.remove('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'));
-            contents.forEach(c => c.classList.remove('active'));
+        // Prepare Charts
+        const dailyCtx = document.getElementById('chart-daily');
+        const driverCtx = document.getElementById('chart-drivers');
+
+        // Only render if elements exist (safety check)
+        if(dailyCtx && driverCtx) {
+            // Destroy old charts if they exist (to prevent overlay glitching)
+            // Note: In a simple app, re-rendering entirely is fine, but Chart.js likes explicit destruction.
+            // For simplicity here, we assume a fresh render or just overwrite.
             
-            // Activate
-            tab.classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700');
-            document.getElementById(`view-${tab.dataset.target}`).classList.add('active');
-        });
-    });
+            new Chart(dailyCtx, {
+                type: 'line',
+                data: {
+                    labels: Object.keys(data.dailyRevenue),
+                    datasets: [{
+                        label: 'Revenue ($)',
+                        data: Object.values(data.dailyRevenue),
+                        borderColor: '#2563eb',
+                        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            const driverLabels = Object.keys(data.salesByDriver).map(uid => {
+                const driver = cachedDrivers.find(d => d.id === uid);
+                return driver ? driver.displayName.split(' ')[0] : 'Unknown';
+            });
+
+            new Chart(driverCtx, {
+                type: 'bar',
+                data: {
+                    labels: driverLabels,
+                    datasets: [{
+                        label: 'Sales ($)',
+                        data: Object.values(data.salesByDriver),
+                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#3b82f6']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+    } catch (error) {
+        console.error("Error loading reports:", error);
+    }
 }
 
-function renderStockRequests(reqs) {
-    const container = document.getElementById('admin-notifications');
-    container.innerHTML = '';
-    reqs.forEach(req => {
-        const div = document.createElement('div');
-        div.className = "bg-blue-50 dark:bg-blue-900/30 p-3 rounded-lg border border-blue-100 dark:border-blue-800 flex justify-between items-center animate-fadeIn";
-        div.innerHTML = `
-            <div class="text-sm dark:text-white">
-                <span class="font-bold">${req.requesterName}</span> needs stock
-            </div>
-            <div class="space-x-2">
-                <button class="bg-blue-600 text-white text-xs px-3 py-1 rounded font-bold hover:bg-blue-700 btn-fulfill" data-id="${req.id}" data-uid="${req.requesterUid}">Fulfill</button>
-                <button class="text-gray-400 hover:text-gray-600 text-xs btn-dismiss" data-id="${req.id}">Dismiss</button>
-            </div>
-        `;
-        container.appendChild(div);
-    });
-
-    // Event Delegation for dynamic buttons
-    container.querySelectorAll('.btn-fulfill').forEach(b => {
-        b.addEventListener('click', async (e) => {
-            // Pre-fill manage tab
-            document.querySelector('[data-target="manage"]').click();
-            document.getElementById('restock-driver').value = e.target.dataset.uid;
-            await resolveStockRequest(e.target.dataset.id);
-        });
-    });
-    
-    container.querySelectorAll('.btn-dismiss').forEach(b => {
-        b.addEventListener('click', async (e) => await dismissStockRequest(e.target.dataset.id));
-    });
-}
-
-function renderDriverList(drivers) {
-    const list = document.getElementById('driver-list');
+function renderPendingOrders(orders) {
+    const list = document.getElementById('pending-orders-list');
     list.innerHTML = '';
-    drivers.forEach(d => {
-        const isOnline = d.onlineStatus === 'online'; // Field needs to be set in Driver UI
+    if (orders.length === 0) {
+        list.innerHTML = `<div class="bg-white p-4 rounded text-center text-gray-400 text-sm">No pending orders.</div>`;
+        return;
+    }
+
+    orders.forEach(order => {
         const card = document.createElement('div');
-        card.className = "bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center";
+        card.className = "bg-white p-4 rounded-lg shadow-sm border-l-4 border-yellow-400 mb-2";
         card.innerHTML = `
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-blue-600 bg-blue-100 border-2 ${isOnline ? 'border-green-500' : 'border-gray-300'}">
-                    ${d.displayName ? d.displayName[0] : 'U'}
-                </div>
-                <div>
-                    <div class="font-bold dark:text-white">${d.displayName}</div>
-                    <div class="text-xs text-gray-500">Stock: ${d.currentStock || 0} • Debt: <span class="text-red-500">$${d.currentDebt || 0}</span></div>
-                </div>
+            <div class="flex justify-between items-start mb-2">
+                <span class="font-bold text-gray-900">#${order.id.slice(0, 6)}</span>
+                <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Pending</span>
             </div>
-            <div class="text-xs font-bold px-2 py-1 rounded ${d.accessStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${d.accessStatus}</div>
+            <div class="text-sm text-gray-600 mb-3"><p><strong>${order.quantity} Items</strong> ($${order.totalPrice})</p><p class="truncate">${order.deliveryAddress}</p></div>
+            <div class="flex gap-2">
+                <select id="assign-driver-${order.id}" class="flex-1 text-sm border p-2 rounded bg-gray-50"><option value="">Select Driver...</option></select>
+                <button class="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold hover:bg-blue-700 btn-assign" data-id="${order.id}">Assign</button>
+            </div>
         `;
         list.appendChild(card);
     });
-}
+    populateDriverDropdowns();
 
-function populateDropdowns() {
-    const selects = document.querySelectorAll('.driver-select');
-    selects.forEach(sel => {
-        const current = sel.value;
-        sel.innerHTML = '<option value="">Select Driver...</option>';
-        cachedDrivers.forEach(d => {
-            if(d.accessStatus !== 'suspended') {
-                const opt = document.createElement('option');
-                opt.value = d.id;
-                opt.text = d.displayName;
-                sel.appendChild(opt);
-            }
+    document.querySelectorAll('.btn-assign').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const orderId = e.target.dataset.id;
+            const select = document.getElementById(`assign-driver-${orderId}`);
+            const driverId = select.value;
+            const driverName = select.options[select.selectedIndex].text;
+            if (!driverId) return alert("Select a driver!");
+            btn.innerText = "Assigning...";
+            await assignDriverToOrder(orderId, driverId, driverName);
         });
-        sel.value = current;
     });
 }
 
-// --- CALENDAR LOGIC ---
-
-function setupCalendar() {
-    document.getElementById('cal-prev').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendarGrid(); });
-    document.getElementById('cal-next').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendarGrid(); });
+function populateDriverDropdowns() {
+    const selects = document.querySelectorAll('select[id^="assign-driver-"]');
+    selects.forEach(select => {
+        while (select.options.length > 1) select.remove(1);
+        cachedDrivers.forEach(driver => {
+            if (driver.accessStatus === 'active') {
+                const opt = document.createElement('option');
+                opt.value = driver.id;
+                opt.text = driver.displayName;
+                select.appendChild(opt);
+            }
+        });
+    });
 }
 
-function renderCalendarGrid() {
-    const grid = document.getElementById('admin-calendar');
-    const label = document.getElementById('cal-month');
-    grid.innerHTML = '';
+function renderDriverLists(drivers, currentUser) {
+    const pendingContainer = document.getElementById('pending-list');
+    const activeContainer = document.getElementById('driver-list');
+    const pendingSection = document.getElementById('pending-section');
+    pendingContainer.innerHTML = '';
+    activeContainer.innerHTML = '';
+
+    const pendingDrivers = drivers.filter(d => d.accessStatus === 'pending');
     
-    const year = calendarDate.getFullYear();
-    const month = calendarDate.getMonth();
-    label.innerText = new Date(year, month, 1).toLocaleString('default', { month: 'long', year: 'numeric' });
-
-    const startDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    // Padding
-    for(let i=0; i<startDay; i++) grid.innerHTML += `<div></div>`;
-
-    for(let d=1; d<=daysInMonth; d++) {
-        const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        
-        // Find shifts for this day across ALL drivers
-        let dayShifts = [];
-        cachedDrivers.forEach(drv => {
-            (drv.shifts || []).forEach(s => {
-                if(s.date === dateStr) dayShifts.push({ ...s, name: drv.displayName, uid: drv.id });
-            });
+    if (pendingDrivers.length > 0) {
+        pendingSection.classList.remove('hidden');
+        pendingDrivers.forEach(user => {
+            const card = document.createElement('div');
+            card.className = "bg-red-50 border border-red-200 p-4 rounded-lg flex justify-between items-center";
+            card.innerHTML = `<div><p class="font-bold">${user.displayName}</p></div><button class="bg-green-600 text-white px-4 py-2 rounded btn-approve" data-id="${user.id}">Approve</button>`;
+            pendingContainer.appendChild(card);
         });
-
-        const dayEl = document.createElement('div');
-        dayEl.className = "calendar-day bg-white dark:bg-gray-800 border border-gray-100 dark:border-gray-700 p-1 hover:bg-gray-50 dark:hover:bg-gray-700 transition";
-        dayEl.innerHTML = `<div class="text-xs font-bold text-gray-400 mb-1">${d}</div>`;
-        
-        dayShifts.forEach(s => {
-            dayEl.innerHTML += `<div class="bg-purple-500 text-white shift-bar truncate">${s.name}: ${s.start}-${s.end}</div>`;
-        });
-
-        // Click to view/delete details
-        dayEl.addEventListener('click', () => {
-            const det = document.getElementById('cal-details');
-            det.classList.remove('hidden');
-            det.innerHTML = `<h4 class="font-bold border-b dark:border-gray-700 mb-2 pb-1 dark:text-white">${dateStr}</h4>`;
-            if(dayShifts.length === 0) det.innerHTML += '<p class="text-gray-400">No shifts.</p>';
-            dayShifts.forEach(s => {
-                const row = document.createElement('div');
-                row.className = "flex justify-between items-center text-xs mb-1 dark:text-gray-300";
-                row.innerHTML = `<span>${s.name} (${s.start}-${s.end})</span>`;
-                const delBtn = document.createElement('button');
-                delBtn.className = "text-red-500 hover:text-red-700 ml-2";
-                delBtn.innerHTML = '<i data-lucide="trash-2" class="w-3 h-3"></i>';
-                delBtn.onclick = async () => { if(confirm("Delete shift?")) await deleteShift(s.uid, s.date, s.start); };
-                row.appendChild(delBtn);
-                det.appendChild(row);
-            });
-            lucide.createIcons();
-        });
-
-        grid.appendChild(dayEl);
+    } else {
+        pendingSection.classList.add('hidden');
     }
+
+    drivers.filter(d => d.accessStatus !== 'pending').forEach(user => {
+        const isSuspended = user.accessStatus === 'suspended';
+        const card = document.createElement('div');
+        card.className = `bg-white p-4 rounded-lg shadow flex flex-col gap-3 ${isSuspended ? 'opacity-75 bg-gray-100' : ''}`;
+        card.innerHTML = `
+            <div class="flex justify-between items-start">
+                <div><p class="font-bold">${user.displayName}</p><span class="text-xs px-2 py-0.5 rounded ${isSuspended ? 'bg-red-100' : 'bg-green-100'}">${user.accessStatus}</span></div>
+                <div class="text-right"><p class="text-xs text-gray-400">Stock</p><p class="text-xl font-bold text-blue-600">${user.currentStock || 0}</p></div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-2 pt-2 border-t">
+                <button class="text-sm py-2 bg-blue-50 text-blue-700 rounded btn-restock" data-id="${user.id}" data-name="${user.displayName}">+ Stock</button>
+                <button class="text-sm py-2 border text-gray-600 rounded btn-toggle-status" data-id="${user.id}" data-status="${user.accessStatus}">${isSuspended ? 'Activate' : 'Suspend'}</button>
+            </div>
+        `;
+        activeContainer.appendChild(card);
+    });
+
+    attachDynamicEvents(currentUser);
 }
 
-async function loadReportData() {
-    const data = await getWeeklyReport();
-    document.getElementById('stat-total-items').innerText = data.totalItems;
-    document.getElementById('stat-total-rev').innerText = `$${data.totalRevenue}`;
-    
-    // Draw Chart
-    const ctx = document.getElementById('chart-daily');
-    if(ctx) {
-         new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: Object.keys(data.dailyRevenue),
-                datasets: [{
-                    label: 'Revenue',
-                    data: Object.values(data.dailyRevenue),
-                    borderColor: '#2563eb',
-                    tension: 0.4
-                }]
-            },
-            options: { responsive: true, maintainAspectRatio: false }
-        });
-    }
+function attachAdminEvents(currentUser) {
+    document.getElementById('admin-logout').addEventListener('click', () => {
+        if(unsubscribeDrivers) unsubscribeDrivers();
+        logoutUser();
+    });
+    document.getElementById('close-restock').addEventListener('click', () => {
+        document.getElementById('restock-modal').classList.add('hidden');
+    });
 }
 
-function showToast(msg) {
-    const t = document.getElementById('toast');
-    t.innerText = msg;
-    t.classList.remove('opacity-0');
-    setTimeout(() => t.classList.add('opacity-0'), 3000);
+function attachDynamicEvents(currentUser) {
+    document.querySelectorAll('.btn-approve').forEach(btn => {
+        btn.addEventListener('click', async (e) => await updateUserStatus(e.target.dataset.id, 'active'));
+    });
+    document.querySelectorAll('.btn-toggle-status').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+            const newStatus = e.target.dataset.status === 'active' ? 'suspended' : 'active';
+            if(confirm(`Mark user as ${newStatus}?`)) await updateUserStatus(e.target.dataset.id, newStatus);
+        });
+    });
+    document.querySelectorAll('.btn-restock').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            const modal = document.getElementById('restock-modal');
+            document.getElementById('modal-driver-name').innerText = e.target.dataset.name;
+            document.getElementById('restock-qty').value = '';
+            
+            const confirmBtn = document.getElementById('confirm-restock');
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+
+            newConfirmBtn.addEventListener('click', async () => {
+                const qty = document.getElementById('restock-qty').value;
+                if(!qty || qty <= 0) return alert("Enter quantity");
+                newConfirmBtn.innerText = "Processing...";
+                await addStockToDriver(currentUser.uid, e.target.dataset.id, qty);
+                modal.classList.add('hidden');
+                newConfirmBtn.innerText = "Confirm";
+            });
+            modal.classList.remove('hidden');
+        });
+    });
 }

@@ -1,16 +1,18 @@
-import { db, doc, runTransaction, serverTimestamp, collection, addDoc, updateDoc, query, where, orderBy, onSnapshot, getDocs, deleteDoc } from './firebase.js';
+
+import { db, doc, runTransaction, serverTimestamp, collection, addDoc } from './firebase.js';
 import { calculateSaleMetrics } from '../utils/calculations.js';
-import { DRIVER_ECONOMICS } from '../config/constants.js';
 
-// --- SALES & STOCK ---
-
-export const processSale = async (userId, quantity, isDeal = true) => {
-    const metrics = calculateSaleMetrics(quantity, isDeal);
+/**
+ * Records a sale: Updates User (Stock/Debt) and creates a Sale Record
+ */
+export const processSale = async (userId, quantity) => {
+    const metrics = calculateSaleMetrics(quantity);
     const userRef = doc(db, "users", userId);
     const salesRef = collection(db, "sales");
 
     try {
         await runTransaction(db, async (transaction) => {
+            // 1. Get current user data
             const userDoc = await transaction.get(userRef);
             if (!userDoc.exists()) throw "User does not exist!";
             
@@ -18,13 +20,21 @@ export const processSale = async (userId, quantity, isDeal = true) => {
             const newStock = (userData.currentStock || 0) - quantity;
             const newDebt = (userData.currentDebt || 0) + metrics.debtIncrease;
 
-            if (newStock < 0) throw "Insufficient Stock!";
+            if (newStock < 0) {
+                throw "Insufficient Stock!";
+            }
 
+            // 2. Update User Data
             transaction.update(userRef, {
                 currentStock: newStock,
                 currentDebt: newDebt
             });
 
+            // 3. Create Sale Record (We can't return ID from transaction directly, but we write it)
+            // Note: In Firestore transactions, write operations must come after reads.
+            // Since 'addDoc' generates an ID automatically, we use a slightly different approach for transactions 
+            // if we want strict consistency, but for sales logs, a batch or standard write is often okay. 
+            // However, to be strict, we can generate a ref first.
             const newSaleRef = doc(salesRef); 
             transaction.set(newSaleRef, {
                 driverId: userId,
@@ -32,153 +42,32 @@ export const processSale = async (userId, quantity, isDeal = true) => {
                 grossRevenue: metrics.grossRevenue,
                 debtIncrease: metrics.debtIncrease,
                 driverProfit: metrics.driverProfit,
-                type: isDeal ? 'deal' : 'standard',
-                timestamp: serverTimestamp()
+                timestamp: serverTimestamp(),
+                type: 'walk-up'
             });
         });
         return { success: true, metrics };
     } catch (error) {
-        console.error("Sale Failed:", error);
-        return { success: false, error };
-    }
-};
-
-export const requestStock = async (userId, userName) => {
-    try {
-        await addDoc(collection(db, "stock_requests"), {
-            requesterUid: userId,
-            requesterName: userName,
-            status: 'pending',
-            timestamp: serverTimestamp()
-        });
-        return { success: true };
-    } catch (error) {
-        return { success: false, error };
-    }
-};
-
-export const saveVehicleInfo = async (userId, vehicleData) => {
-    try {
-        await updateDoc(doc(db, "users", userId), { vehicle: vehicleData });
-        return { success: true };
-    } catch (error) {
-        return { success: false, error };
-    }
-};
-
-// --- SHIFTS & COVER ---
-
-export const requestCover = async (userId, userName, shiftData, coverStart, coverEnd) => {
-    try {
-        await addDoc(collection(db, "cover_requests"), {
-            requesterUid: userId,
-            requesterName: userName,
-            originalDate: shiftData.date,
-            originalStart: shiftData.start,
-            originalEnd: shiftData.end,
-            coverStart,
-            coverEnd,
-            status: 'open',
-            timestamp: serverTimestamp()
-        });
-        return { success: true };
-    } catch (error) {
-        return { success: false, error };
+        console.error("Sale Transaction Failed:", error);
+        return { success: false, error: error };
     }
 };
 
 /**
- * Listen to ALL open cover requests (to show on calendar)
+ * Start Shift Logic
  */
-export const subscribeToAllCoverRequests = (callback) => {
-    const q = query(collection(db, "cover_requests"), where("status", "==", "open"));
-    return onSnapshot(q, (snapshot) => {
-        const reqs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-        callback(reqs);
-    });
-};
-
-/**
- * Accept a cover request (Take the shift)
- */
-export const acceptCoverRequest = async (reqId, accepterUid, accepterName) => {
-    const reqRef = doc(db, "cover_requests", reqId);
+export const startShift = async (userId) => {
+    const shiftRef = collection(db, "shifts");
+    const userRef = doc(db, "users", userId);
     
-    // We use a transaction to ensure two people don't grab it at once
-    try {
-        await runTransaction(db, async (t) => {
-            const reqDoc = await t.get(reqRef);
-            if (!reqDoc.exists()) throw "Request not found";
-            if (reqDoc.data().status !== 'open') throw "Shift already taken";
-
-            // 1. Mark request as filled
-            t.update(reqRef, {
-                status: 'filled',
-                filledByUid: accepterUid,
-                filledByName: accepterName
-            });
-
-            // 2. Add shift to Accepter's roster
-            // Note: This requires the Admin service logic to formally update the 'shifts' array.
-            // For safety/permission rules, usually only Admin can write to 'users/{id}'.
-            // However, assuming Driver has write access to their own 'shifts' or we use a cloud function:
-            // We will do a direct update here for the MVP.
-            const userRef = doc(db, "users", accepterUid);
-            const userDoc = await t.get(userRef);
-            const currentShifts = userDoc.data().shifts || [];
-            
-            const newShift = {
-                date: reqDoc.data().originalDate,
-                start: reqDoc.data().coverStart,
-                end: reqDoc.data().coverEnd,
-                type: 'covered'
-            };
-            
-            t.update(userRef, { shifts: [...currentShifts, newShift] });
-        });
-        return { success: true };
-    } catch (error) {
-        console.error("Accept Cover Failed:", error);
-        return { success: false, error };
-    }
-};
-
-// --- STATS & HISTORY ---
-
-export const getDriverStats = async (userId) => {
-    // 1. Get Sales History
-    const q = query(
-        collection(db, "sales"), 
-        where("driverId", "==", userId),
-        orderBy("timestamp", "desc")
-    );
-    const snap = await getDocs(q);
-    const history = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-
-    // 2. Calculate Weekly Stats
-    // Assuming 'Week' starts Sunday. 
-    const now = new Date();
-    const startOfWeek = new Date(now.setDate(now.getDate() - now.getDay()));
-    startOfWeek.setHours(0,0,0,0);
-
-    let weeklyUnits = 0;
-    let weeklyProfit = 0;
-
-    history.forEach(sale => {
-        if (sale.timestamp && sale.timestamp.toDate() >= startOfWeek) {
-            weeklyUnits += sale.quantity;
-            weeklyProfit += (sale.driverProfit || (sale.quantity * DRIVER_ECONOMICS.PROFIT_PER_ITEM));
-        }
+    // Create a new shift document
+    const docRef = await addDoc(shiftRef, {
+        driverId: userId,
+        startTime: serverTimestamp(),
+        status: 'open'
     });
 
-    // Prediction: Simple linear projection based on days passed?
-    // Or just "Potential" based on the unit count provided in prompt ($20 per unit).
-    // The prompt asks for "prediction for weekly profits (20 each unit sold)". 
-    // We'll return the calculated current profit and maybe a target.
-    
-    return {
-        history,
-        weeklyUnits,
-        weeklyProfit
-    };
+    // Update user to know they are on a shift
+    // (Optional: You might want to store currentShiftId on the user to prevent double starts)
+    return docRef.id;
 };

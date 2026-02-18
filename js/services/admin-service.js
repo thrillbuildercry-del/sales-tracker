@@ -1,4 +1,21 @@
+<<<<<<< HEAD
 import { db, collection, query, where, onSnapshot, doc, updateDoc, runTransaction, serverTimestamp, deleteDoc, addDoc, getDoc } from './firebase.js';
+=======
+import { 
+    db, 
+    collection, 
+    query, 
+    where, 
+    onSnapshot, 
+    doc, 
+    updateDoc, 
+    runTransaction, 
+    serverTimestamp, 
+    deleteDoc, 
+    addDoc, 
+    getDoc 
+} from './firebase.js';
+>>>>>>> parent of c60ae61 (v2)
 
 // --- REAL-TIME LISTENERS ---
 
@@ -27,7 +44,11 @@ export const subscribeToCoverRequests = (callback) => {
     });
 };
 
+<<<<<<< HEAD
 // --- MANAGEMENT ACTIONS ---
+=======
+// --- ASSET MANAGEMENT (Stock & Debt) ---
+>>>>>>> parent of c60ae61 (v2)
 
 export const updateUserStatus = async (userId, newStatus) => {
     await updateDoc(doc(db, "users", userId), { accessStatus: newStatus });
@@ -48,20 +69,34 @@ export const addStockToDriver = async (adminId, driverId, quantity) => {
             const newStock = (driverDoc.data().currentStock || 0) + parseInt(quantity);
             
             transaction.update(driverRef, { currentStock: newStock });
+<<<<<<< HEAD
             transaction.set(logRef, {
                 type: 'restock',
                 adminId, driverId,
+=======
+            
+            // Log the action
+            transaction.set(logRef, {
+                type: 'restock',
+                adminId, 
+                driverId,
+>>>>>>> parent of c60ae61 (v2)
                 quantity: parseInt(quantity),
                 timestamp: serverTimestamp()
             });
         });
         return { success: true };
     } catch (error) {
+        console.error("Restock failed:", error);
         return { success: false, error };
     }
 };
 
+<<<<<<< HEAD
 // Peer-to-Peer Transfer
+=======
+// 2. Driver -> Driver (P2P Transfer)
+>>>>>>> parent of c60ae61 (v2)
 export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
     const fromRef = doc(db, "users", fromId);
     const toRef = doc(db, "users", toId);
@@ -71,6 +106,11 @@ export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
             const fromDoc = await t.get(fromRef);
             const toDoc = await t.get(toRef);
             
+<<<<<<< HEAD
+=======
+            if (!fromDoc.exists() || !toDoc.exists()) throw "One or both drivers not found";
+
+>>>>>>> parent of c60ae61 (v2)
             const fromData = fromDoc.data();
             const toData = toDoc.data();
 
@@ -88,11 +128,50 @@ export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
         });
         return { success: true };
     } catch (e) {
+        console.error("Transfer failed:", e);
         return { success: false, error: e };
     }
 };
 
+<<<<<<< HEAD
 // Resolve Stock Request
+=======
+// 3. Driver -> Warehouse/House (Collection)
+export const adminCollectAssets = async (driverId, stockToCollect, debtToCollect) => {
+    const driverRef = doc(db, "users", driverId);
+    try {
+        await runTransaction(db, async (t) => {
+            const d = await t.get(driverRef);
+            if (!d.exists()) throw "Driver not found";
+            
+            const currentStock = d.data().currentStock || 0;
+            const currentDebt = d.data().currentDebt || 0;
+
+            // Ensure we don't go below zero
+            const newStock = Math.max(0, currentStock - parseInt(stockToCollect || 0));
+            const newDebt = Math.max(0, currentDebt - parseInt(debtToCollect || 0));
+
+            t.update(driverRef, {
+                currentStock: newStock,
+                currentDebt: newDebt
+            });
+        });
+        return { success: true };
+    } catch (e) {
+        console.error("Collection failed:", e);
+        return { success: false, error: e };
+    }
+};
+
+// --- USER MANAGEMENT ---
+
+export const updateUserStatus = async (userId, newStatus) => {
+    await updateDoc(doc(db, "users", userId), { accessStatus: newStatus });
+};
+
+// --- REQUEST HANDLING ---
+
+>>>>>>> parent of c60ae61 (v2)
 export const resolveStockRequest = async (reqId) => {
     await updateDoc(doc(db, "stock_requests", reqId), { status: 'completed' });
 };
@@ -107,10 +186,16 @@ export const assignShift = async (driverId, shiftData) => {
     // shiftData: { date: 'YYYY-MM-DD', start: 'HH:MM', end: 'HH:MM' }
     const userRef = doc(db, "users", driverId);
     const userDoc = await getDoc(userRef);
+    
     let shifts = userDoc.data().shifts || [];
     
+<<<<<<< HEAD
     // Remove if exists (Edit logic)
+=======
+    // Remove existing shift for that day/time if it exists (simple overwrite logic)
+>>>>>>> parent of c60ae61 (v2)
     shifts = shifts.filter(s => !(s.date === shiftData.date && s.start === shiftData.start));
+    
     shifts.push(shiftData);
     
     await updateDoc(userRef, { shifts });
@@ -119,7 +204,9 @@ export const assignShift = async (driverId, shiftData) => {
 export const deleteShift = async (driverId, date, start) => {
     const userRef = doc(db, "users", driverId);
     const userDoc = await getDoc(userRef);
+    
     let shifts = userDoc.data().shifts || [];
     shifts = shifts.filter(s => !(s.date === date && s.start === start));
+    
     await updateDoc(userRef, { shifts });
 };

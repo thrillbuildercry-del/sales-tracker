@@ -17,11 +17,11 @@ export const renderDriverDashboard = (user) => {
         updateDashboardUI(currentUserData);
     });
 
-    // Listen to Cover Requests
+    // Listen to Cover Requests for Calendar
     subscribeToAllCoverRequests((reqs) => {
         cachedCoverRequests = reqs;
-        if(!document.getElementById('view-schedule').classList.contains('hidden')) {
-            renderDriverCalendar(user); 
+        if(!document.getElementById('schedule-section').classList.contains('hidden')) {
+            renderDriverCalendar(user); // Re-render if looking at calendar
         }
     });
 
@@ -53,19 +53,6 @@ export const renderDriverDashboard = (user) => {
             <main class="p-4 max-w-md mx-auto space-y-4 mb-16">
                 
                 <div id="view-dashboard" class="view-section animate-fadeIn">
-                    
-                    <div class="grid grid-cols-2 gap-3 mb-4">
-                        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                            <h2 class="text-gray-500 text-xs uppercase">Stock</h2>
-                            <div class="text-3xl font-bold dark:text-white" id="display-stock">--</div>
-                            <button id="btn-req-stock" class="text-xs text-blue-600 mt-1 font-bold flex items-center"><i data-lucide="plus" class="w-3 h-3 mr-1"></i> Request</button>
-                        </div>
-                        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-                            <h2 class="text-gray-500 text-xs uppercase">Debt</h2>
-                            <div class="text-3xl font-bold text-red-500" id="display-debt">$0</div>
-                        </div>
-                    </div>
-
                     <div id="active-delivery-card" class="hidden bg-blue-600 text-white p-5 rounded-xl shadow-lg relative overflow-hidden mb-4">
                         <div class="absolute top-0 right-0 p-4 opacity-10"><i data-lucide="map-pin" class="w-24 h-24"></i></div>
                         <div class="relative z-10">
@@ -86,39 +73,29 @@ export const renderDriverDashboard = (user) => {
                         </div>
                     </div>
 
-                    <div id="incoming-section" class="mb-6">
+                    <div id="incoming-section">
                         <h2 class="text-gray-500 text-xs uppercase font-bold mb-2 flex justify-between">
                             <span>Incoming Jobs</span> <span id="job-count" class="bg-red-500 text-white px-1.5 rounded-full text-[10px] hidden">0</span>
                         </h2>
                         <div id="incoming-list" class="space-y-2"></div>
                     </div>
 
-                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border border-gray-100 dark:border-gray-700">
-                        <h2 class="text-gray-500 text-xs uppercase mb-3 font-bold">Manual Sales</h2>
-                        
-                        <div class="mb-4">
-                            <span class="text-[10px] uppercase font-bold text-green-600 mb-1 block">Full Price (Earn $20/ea)</span>
-                            <div class="grid grid-cols-4 gap-2">
-                                ${[1,2,3,4].map(n => `
-                                <button class="sale-btn p-2 border rounded bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 hover:shadow-md active:scale-95 transition" data-qty="${n}" data-type="standard">
-                                    <div class="text-sm font-bold text-green-700 dark:text-green-400">${n}</div>
-                                    <div class="text-[10px] text-gray-500 dark:text-gray-400">$${n*80}</div>
-                                </button>`).join('')}
-                            </div>
+                    <div class="grid grid-cols-2 gap-3 mt-4">
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h2 class="text-gray-500 text-xs uppercase">Stock</h2>
+                            <div class="text-3xl font-bold dark:text-white" id="display-stock">--</div>
+                            <button id="btn-req-stock" class="text-xs text-blue-600 mt-1 font-bold">+ Request</button>
                         </div>
+                        <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+                            <h2 class="text-gray-500 text-xs uppercase">Debt</h2>
+                            <div class="text-3xl font-bold text-red-500" id="display-debt">$0</div>
+                        </div>
+                    </div>
 
-                        <div>
-                            <span class="text-[10px] uppercase font-bold text-orange-600 mb-1 block">Deal Price (Tiered)</span>
-                            <div class="grid grid-cols-4 gap-2">
-                                ${[1,2,3,4].map(n => {
-                                    const prices = {1:80, 2:150, 3:220, 4:280};
-                                    return `
-                                    <button class="sale-btn p-2 border rounded bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 hover:shadow-md active:scale-95 transition" data-qty="${n}" data-type="deal">
-                                        <div class="text-sm font-bold text-orange-600 dark:text-orange-400">${n}</div>
-                                        <div class="text-[10px] text-gray-500 dark:text-gray-400">$${prices[n]}</div>
-                                    </button>`
-                                }).join('')}
-                            </div>
+                    <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 border border-gray-100 dark:border-gray-700 mt-4">
+                        <h2 class="text-gray-500 text-xs uppercase mb-3 font-bold">Walk-up Sale</h2>
+                        <div class="grid grid-cols-4 gap-2">
+                             ${[1,2,3,4].map(n => `<button class="sale-btn p-2 border rounded bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800 hover:shadow-md active:scale-95" data-qty="${n}"><div class="text-sm font-bold text-orange-600 dark:text-orange-400">${n}</div></button>`).join('')}
                         </div>
                     </div>
                 </div>
@@ -129,7 +106,16 @@ export const renderDriverDashboard = (user) => {
                         <span id="drv-cal-month" class="font-bold dark:text-white">Month</span>
                         <button id="drv-cal-next" class="p-1"><i data-lucide="chevron-right" class="w-5 h-5"></i></button>
                     </div>
+                    
                     <div id="drv-calendar" class="calendar-grid bg-white dark:bg-gray-800 rounded-xl p-2 shadow-sm mb-4"></div>
+                    
+                    <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg border border-blue-100 dark:border-blue-800">
+                        <h3 class="font-bold text-sm text-blue-800 dark:text-blue-300 mb-1">Calendar Key</h3>
+                        <div class="flex gap-4 text-xs">
+                            <span class="flex items-center"><div class="w-3 h-3 bg-blue-500 rounded mr-1"></div> My Shift</span>
+                            <span class="flex items-center"><div class="w-3 h-3 bg-red-500 rounded mr-1"></div> Open Cover</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div id="view-summary" class="view-section hidden animate-fadeIn">
@@ -143,45 +129,58 @@ export const renderDriverDashboard = (user) => {
                             <span class="font-bold" id="weekly-units-val">0</span> Units Sold This Week
                         </div>
                     </div>
+
                     <h3 class="font-bold text-gray-800 dark:text-white mb-3">Recent Activity</h3>
-                    <div id="summary-history-list" class="space-y-3 pb-10"></div>
+                    <div id="summary-history-list" class="space-y-3 pb-10">
+                        <p class="text-center text-gray-400 text-sm">Loading history...</p>
+                    </div>
                 </div>
+
             </main>
 
             <div id="settings-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden backdrop-blur-sm">
                 <div class="bg-white dark:bg-gray-800 w-11/12 max-w-sm p-6 rounded-2xl">
                     <h2 class="text-xl font-bold dark:text-white mb-4">Settings</h2>
-                    
                     <div class="mb-4">
                         <label class="text-xs font-bold text-gray-500 uppercase">My Vehicle</label>
                         <input type="text" id="veh-color" placeholder="Color" class="w-full mt-1 p-2 border rounded dark:bg-gray-700 dark:text-white mb-2">
                         <input type="text" id="veh-model" placeholder="Model" class="w-full p-2 border rounded dark:bg-gray-700 dark:text-white">
-                        <button id="btn-save-veh" class="w-full bg-blue-600 text-white py-2 rounded font-bold mt-2">Save Vehicle</button>
                     </div>
-
-                    <hr class="border-gray-200 dark:border-gray-700 my-4">
-
-                    <button onclick="window.toggleTheme()" class="w-full flex justify-between items-center p-3 bg-gray-50 dark:bg-gray-700 rounded-lg mb-2">
-                        <span class="font-medium dark:text-white">Dark Mode</span>
-                        <i data-lucide="moon" class="w-5 h-5 text-gray-500 dark:text-gray-300"></i>
-                    </button>
-
-                    <button id="driver-logout" class="w-full flex justify-center items-center p-3 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-lg font-bold">
-                        Sign Out
-                    </button>
-
+                    <button id="btn-save-veh" class="w-full bg-blue-600 text-white py-2 rounded font-bold mb-4">Save</button>
+                    <button id="driver-logout" class="w-full text-red-500 py-2">Sign Out</button>
                     <button onclick="document.getElementById('settings-modal').classList.add('hidden')" class="w-full text-gray-400 py-2 mt-2">Close</button>
                 </div>
             </div>
 
-            <div id="cover-modal" class="hidden"></div> 
+            <div id="cover-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden backdrop-blur-sm">
+                <div class="bg-white dark:bg-gray-800 w-11/12 max-w-sm p-6 rounded-2xl">
+                    <h3 class="font-bold text-lg dark:text-white mb-2">Manage Shift</h3>
+                    <p id="cover-shift-info" class="text-sm text-gray-500 mb-4">...</p>
+                    
+                    <div id="cover-form-group">
+                        <label class="text-xs font-bold text-gray-500">Request Cover (Time Range)</label>
+                        <div class="grid grid-cols-2 gap-2 mt-1 mb-4">
+                            <input type="time" id="cover-start" class="border rounded p-2 dark:bg-gray-700 dark:text-white">
+                            <input type="time" id="cover-end" class="border rounded p-2 dark:bg-gray-700 dark:text-white">
+                        </div>
+                        <button id="btn-submit-cover" class="w-full bg-red-500 hover:bg-red-600 text-white font-bold py-2 rounded">Request Cover</button>
+                    </div>
+
+                    <div id="take-shift-group" class="hidden">
+                        <p class="text-sm text-blue-600 mb-4">This shift is available. Take it?</p>
+                        <button id="btn-take-shift" class="w-full bg-green-600 text-white font-bold py-2 rounded">Accept Shift</button>
+                    </div>
+
+                    <button onclick="document.getElementById('cover-modal').classList.add('hidden')" class="w-full text-gray-400 mt-4">Cancel</button>
+                </div>
             </div>
+        </div>
     `;
 
     lucide.createIcons();
     attachEvents(user);
     initOrderListeners(user);
-    loadSummaryData(user);
+    loadSummaryData(user); // Initial Load
 };
 
 // --- NAVIGATION & TABS ---
@@ -231,19 +230,10 @@ function attachEvents(user) {
 
     document.querySelectorAll('.sale-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
-            const btnEl = e.target.closest('button');
-            const qty = parseInt(btnEl.dataset.qty);
-            const type = btnEl.dataset.type; // 'standard' or 'deal'
-            
-            const price = type === 'standard' ? qty * 80 : ({1:80,2:150,3:220,4:280}[qty]);
-            
-            if(confirm(`Sell ${qty} item(s) at ${type.toUpperCase()} price ($${price})?`)) {
-                const res = await processSale(user.uid, qty, type); 
-                if(res.success) {
-                    showToast(`Sold! Earned $${res.metrics.driverProfit}`);
-                } else {
-                    alert("Sale failed");
-                }
+            const qty = parseInt(e.currentTarget.dataset.qty);
+            if(confirm(`Sell ${qty} items (Walk-up)?`)) {
+                await processSale(user.uid, qty, true); // Always deal price for walk-up shortcut
+                showToast("Sale Recorded");
             }
         });
     });
@@ -293,28 +283,18 @@ async function loadSummaryData(user) {
         return;
     }
 
-    stats.history.slice(0, 20).forEach(sale => {
+    stats.history.slice(0, 20).forEach(sale => { // Show last 20
         const el = document.createElement('div');
         el.className = "bg-white dark:bg-gray-800 p-3 rounded-lg shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center";
-        
         const date = sale.timestamp ? formatDate(sale.timestamp) : 'N/A';
         const time = sale.timestamp ? formatTime(sale.timestamp) : '';
-        const isStandard = sale.type === 'standard';
         
         el.innerHTML = `
             <div>
-                <div class="font-bold text-sm dark:text-white">
-                    ${sale.quantity} Items 
-                    <span class="text-xs font-bold uppercase ml-1 ${isStandard ? 'text-green-600 bg-green-100 px-1 rounded' : 'text-orange-600 bg-orange-100 px-1 rounded'}">
-                        ${sale.type}
-                    </span>
-                </div>
+                <div class="font-bold text-sm dark:text-white">${sale.quantity} Items <span class="text-gray-400 font-normal">(${sale.type})</span></div>
                 <div class="text-xs text-gray-400">${date} at ${time}</div>
             </div>
-            <div class="text-right">
-                <div class="text-gray-500 text-xs">Rev: $${sale.grossRevenue}</div>
-                <div class="text-green-600 font-bold text-sm">+$${sale.driverProfit}</div>
-            </div>
+            <div class="text-green-600 font-bold text-sm">+$${sale.driverProfit}</div>
         `;
         list.appendChild(el);
     });

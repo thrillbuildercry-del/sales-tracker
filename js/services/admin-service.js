@@ -38,19 +38,6 @@ export const addStockToDriver = async (adminId, driverId, quantity) => {
     const driverRef = doc(db, "users", driverId);
     const logRef = doc(collection(db, "inventory_log"));
     
-    try {
-        await runTransaction(db, async (t) => {
-            const d = await t.get(driverRef);
-            if(!d.exists()) throw "Driver not found";
-            t.update(driverRef, { currentStock: (d.data().currentStock||0) + parseInt(quantity) });
-        });
-        return { success: true };
-    } catch(e) { return { success: false, error: e }; }
-};
-
-export const restockDriver = async (adminId, driverId, quantity) => {
-    const driverRef = doc(db, "users", driverId);
-    const logRef = doc(collection(db, "inventory_log"));
     // Also resolve any pending requests for this driver implicitly? 
     // For now, let's keep it manual.
 
@@ -74,51 +61,35 @@ export const restockDriver = async (adminId, driverId, quantity) => {
     }
 };
 
-// Admin Collect (Return stock / Pay debt)
-export const adminCollectAssets = async (driverId, stockToCollect, debtToCollect) => {
-    const driverRef = doc(db, "users", driverId);
+// Peer-to-Peer Transfer
+export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
+    const fromRef = doc(db, "users", fromId);
+    const toRef = doc(db, "users", toId);
+    
     try {
         await runTransaction(db, async (t) => {
-            const d = await t.get(driverRef);
-            if(!d.exists()) throw "Driver not found";
+            const fromDoc = await t.get(fromRef);
+            const toDoc = await t.get(toRef);
             
-            const currentStock = d.data().currentStock || 0;
-            const currentDebt = d.data().currentDebt || 0;
+            const fromData = fromDoc.data();
+            const toData = toDoc.data();
 
-            const newStock = Math.max(0, currentStock - parseInt(stockToCollect || 0));
-            const newDebt = Math.max(0, currentDebt - parseInt(debtToCollect || 0));
+            // Deduct from Source
+            t.update(fromRef, {
+                currentStock: (fromData.currentStock || 0) - quantity,
+                currentDebt: (fromData.currentDebt || 0) - debtAmount
+            });
 
-            t.update(driverRef, {
-                currentStock: newStock,
-                currentDebt: newDebt
+            // Add to Target
+            t.update(toRef, {
+                currentStock: (toData.currentStock || 0) + quantity,
+                currentDebt: (toData.currentDebt || 0) + debtAmount
             });
         });
         return { success: true };
     } catch (e) {
         return { success: false, error: e };
     }
-};
-
-// Peer-to-Peer Transfer
-export const p2pTransfer = async (fromId, toId, quantity, debtAmount) => {
-    const fromRef = doc(db, "users", fromId);
-    const toRef = doc(db, "users", toId);
-    try {
-        await runTransaction(db, async (t) => {
-            const f = await t.get(fromRef);
-            const target = await t.get(toRef);
-            
-            t.update(fromRef, {
-                currentStock: (f.data().currentStock||0) - quantity,
-                currentDebt: (f.data().currentDebt||0) - debtAmount
-            });
-            t.update(toRef, {
-                currentStock: (target.data().currentStock||0) + quantity,
-                currentDebt: (target.data().currentDebt||0) + debtAmount
-            });
-        });
-        return { success: true };
-    } catch(e) { return { success: false, error: e }; }
 };
 
 // Resolve Stock Request

@@ -1,18 +1,4 @@
-<<<<<<< HEAD
 import { subscribeToDrivers, subscribeToStockRequests, subscribeToCoverRequests, addStockToDriver, p2pTransfer, assignShift, deleteShift, resolveStockRequest, dismissStockRequest, updateUserStatus } from '../services/admin-service.js';
-=======
-import { 
-    subscribeToDrivers, 
-    subscribeToStockRequests, 
-    addStockToDriver, 
-    p2pTransfer, 
-    adminCollectAssets, 
-    assignShift, 
-    deleteShift, 
-    resolveStockRequest, 
-    dismissStockRequest 
-} from '../services/admin-service.js';
->>>>>>> parent of c60ae61 (v2)
 import { subscribeToPendingOrders } from '../services/order-service.js';
 import { getWeeklyReport } from '../services/report-service.js';
 import { logoutUser } from '../services/auth-manager.js';
@@ -44,7 +30,7 @@ export const renderAdminDashboard = (currentUser) => {
                     `).join('')}
                 </div>
 
-                <div id="view-team" class="tab-content space-y-4">
+                <div id="view-team" class="tab-content active space-y-4">
                     <div class="grid grid-cols-2 gap-4">
                          <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
                             <div class="text-xs text-gray-500 uppercase">Total Items Sold (7d)</div>
@@ -63,12 +49,7 @@ export const renderAdminDashboard = (currentUser) => {
                     <div id="pending-orders-list" class="space-y-3"></div>
                 </div>
 
-<<<<<<< HEAD
                 <div id="view-manage" class="tab-content space-y-6">
-=======
-                <div id="view-manage" class="tab-content hidden space-y-6">
-                    
->>>>>>> parent of c60ae61 (v2)
                     <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border dark:border-gray-700">
                         <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="package-plus" class="w-4 h-4 mr-2"></i> Add Stock</h3>
                         <div class="flex gap-2">
@@ -79,7 +60,6 @@ export const renderAdminDashboard = (currentUser) => {
                     </div>
 
                     <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border dark:border-gray-700">
-<<<<<<< HEAD
                         <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="arrow-right-left" class="w-4 h-4 mr-2"></i> Transfer Assets</h3>
                         <div class="flex items-center gap-2 mb-2">
                             <select id="trans-from" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
@@ -91,39 +71,6 @@ export const renderAdminDashboard = (currentUser) => {
                             <input type="number" id="trans-debt" placeholder="Debt $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
                         </div>
                         <button id="btn-admin-transfer" class="mt-3 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg transition">Transfer</button>
-=======
-                        
-                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="arrow-right-left" class="w-4 h-4 mr-2"></i> Driver to Driver Transfer</h3>
-                        <div class="flex items-center gap-2 mb-2">
-                            <div class="flex-1">
-                                <label class="text-[10px] text-gray-500 font-bold uppercase">From</label>
-                                <select id="trans-from" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
-                            </div>
-                            <i data-lucide="arrow-right" class="w-4 h-4 text-gray-400 mt-4"></i>
-                            <div class="flex-1">
-                                <label class="text-[10px] text-gray-500 font-bold uppercase">To</label>
-                                <select id="trans-to" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
-                            </div>
-                        </div>
-                        <div class="flex gap-2 mb-4">
-                            <input type="number" id="trans-qty" placeholder="Items" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
-                            <input type="number" id="trans-debt" placeholder="Debt $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
-                        </div>
-                        <button id="btn-admin-transfer" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg transition mb-6">Transfer Assets</button>
-
-                        <hr class="border-gray-200 dark:border-gray-700 mb-6">
-
-                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="download" class="w-4 h-4 mr-2 text-green-500"></i> Collection / Return</h3>
-                        <div class="mb-2">
-                             <label class="text-[10px] text-gray-500 font-bold uppercase">Select Driver</label>
-                            <select id="collect-driver" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
-                        </div>
-                        <div class="flex gap-2">
-                            <input type="number" id="collect-qty" placeholder="Return Stock" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white text-blue-600 font-bold">
-                            <input type="number" id="collect-debt" placeholder="Collect Cash $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white text-green-600 font-bold">
-                        </div>
-                        <button id="btn-admin-collect" class="mt-3 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg transition">Process Collection</button>
->>>>>>> parent of c60ae61 (v2)
                     </div>
                 </div>
 
@@ -164,12 +111,7 @@ export const renderAdminDashboard = (currentUser) => {
     setupTabs();
     setupCalendar();
     
-<<<<<<< HEAD
     // Listeners
-=======
-    // --- LISTENERS ---
-
->>>>>>> parent of c60ae61 (v2)
     document.getElementById('admin-logout').addEventListener('click', () => logoutUser());
 
     subscribeToDrivers((drivers) => {
@@ -182,12 +124,7 @@ export const renderAdminDashboard = (currentUser) => {
 
     subscribeToStockRequests(renderStockRequests);
     
-<<<<<<< HEAD
     // Button Bindings
-=======
-    // --- ACTIONS ---
-
->>>>>>> parent of c60ae61 (v2)
     document.getElementById('btn-admin-restock').addEventListener('click', async () => {
         const uid = document.getElementById('restock-driver').value;
         const qty = document.getElementById('restock-qty').value;
@@ -208,28 +145,6 @@ export const renderAdminDashboard = (currentUser) => {
             showToast("Transfer Complete");
             document.getElementById('trans-qty').value = '';
             document.getElementById('trans-debt').value = '';
-<<<<<<< HEAD
-=======
-        }
-    });
-
-    document.getElementById('btn-admin-collect').addEventListener('click', async () => {
-        const uid = document.getElementById('collect-driver').value;
-        const s = parseInt(document.getElementById('collect-qty').value) || 0;
-        const d = parseInt(document.getElementById('collect-debt').value) || 0;
-        
-        if(uid && (s > 0 || d > 0)) {
-            if(confirm(`Confirm Collection?\nStock: ${s}\nCash: $${d}`)) {
-                const res = await adminCollectAssets(uid, s, d);
-                if(res.success) {
-                    showToast("Collection Processed");
-                    document.getElementById('collect-qty').value = '';
-                    document.getElementById('collect-debt').value = '';
-                } else {
-                    alert("Error: " + res.error);
-                }
-            }
->>>>>>> parent of c60ae61 (v2)
         }
     });
 
@@ -251,149 +166,21 @@ function setupTabs() {
     const tabs = document.querySelectorAll('.nav-tab');
     const contents = document.querySelectorAll('.tab-content');
     
-<<<<<<< HEAD
     tabs[0].classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'); // Active state for first tab
-=======
-    // Set default active tab (Team)
-    tabs[0].classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'); 
->>>>>>> parent of c60ae61 (v2)
 
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
             // Reset
             tabs.forEach(t => t.classList.remove('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'));
-<<<<<<< HEAD
             contents.forEach(c => c.classList.remove('active'));
             
             // Activate
             tab.classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700');
             document.getElementById(`view-${tab.dataset.target}`).classList.add('active');
-=======
-            // Hide all content
-            contents.forEach(c => c.classList.add('hidden'));
-            
-            // Activate clicked
-            tab.classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700');
-            // Show content
-            const targetId = `view-${tab.dataset.target}`;
-            const targetEl = document.getElementById(targetId);
-            if(targetEl) targetEl.classList.remove('hidden');
->>>>>>> parent of c60ae61 (v2)
         });
     });
 }
 
-<<<<<<< HEAD
-=======
-function renderDriverList(drivers) {
-    const list = document.getElementById('driver-list');
-    list.innerHTML = '';
-    
-    if(drivers.length === 0) {
-        list.innerHTML = '<div class="text-center text-gray-500">No drivers found.</div>';
-        return;
-    }
-
-    drivers.forEach(d => {
-        const isOnline = d.onlineStatus === 'online';
-        const card = document.createElement('div');
-        card.className = "bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition";
-        card.innerHTML = `
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-blue-600 bg-blue-100 border-2 ${isOnline ? 'border-green-500' : 'border-gray-300'}">
-                    ${d.displayName ? d.displayName[0] : 'U'}
-                </div>
-                <div>
-                    <div class="font-bold dark:text-white">${d.displayName}</div>
-                    <div class="text-xs text-gray-500">Stock: ${d.currentStock || 0} • Debt: <span class="text-red-500">$${d.currentDebt || 0}</span></div>
-                </div>
-            </div>
-            <div class="text-right">
-                <div class="text-xs font-bold px-2 py-1 rounded ${d.accessStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} mb-1">${d.accessStatus}</div>
-                <div class="text-[10px] text-gray-400">View History</div>
-            </div>
-        `;
-        card.addEventListener('click', () => showDriverHistory(d.id, d.displayName));
-        list.appendChild(card);
-    });
-}
-
-async function showDriverHistory(uid, name) {
-    const modal = document.getElementById('driver-detail-modal');
-    const title = document.getElementById('detail-name');
-    const list = document.getElementById('detail-history-list');
-    const weekSoldEl = document.getElementById('detail-week-sold');
-    const weekProfitEl = document.getElementById('detail-week-profit');
-    
-    title.innerText = `${name} - History`;
-    list.innerHTML = '<div class="text-center text-gray-500 mt-10">Loading...</div>';
-    modal.classList.remove('hidden');
-
-    try {
-        const stats = await getDriverStats(uid);
-        
-        weekSoldEl.innerText = stats.weeklyUnits;
-        weekProfitEl.innerText = `$${stats.weeklyProfit}`;
-
-        list.innerHTML = '';
-        if(stats.history.length === 0) {
-            list.innerHTML = '<div class="text-center text-gray-500 mt-5">No sales recorded.</div>';
-            return;
-        }
-
-        stats.history.slice(0, 50).forEach(sale => {
-            const date = sale.timestamp ? formatDate(sale.timestamp) : 'N/A';
-            const time = sale.timestamp ? formatTime(sale.timestamp) : '';
-            const isStandard = sale.type === 'standard';
-            
-            const badgeClass = isStandard 
-                ? 'bg-green-100 text-green-700 border border-green-200' 
-                : 'bg-orange-100 text-orange-700 border border-orange-200';
-            
-            const typeLabel = isStandard ? 'FULL PRICE' : 'DEAL';
-
-            const el = document.createElement('div');
-            el.className = "bg-white dark:bg-gray-700 p-3 rounded-lg border border-gray-100 dark:border-gray-600 flex justify-between items-center";
-            el.innerHTML = `
-                <div>
-                    <div class="flex items-center gap-2">
-                        <span class="font-bold dark:text-white text-sm">${sale.quantity} Item(s)</span>
-                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeClass}">${typeLabel}</span>
-                    </div>
-                    <div class="text-xs text-gray-400 mt-0.5">${date} at ${time}</div>
-                </div>
-                <div class="text-right">
-                    <div class="text-[10px] text-gray-500 dark:text-gray-400">Profit</div>
-                    <div class="text-green-600 dark:text-green-400 font-bold">+$${sale.driverProfit}</div>
-                </div>
-            `;
-            list.appendChild(el);
-        });
-
-    } catch (e) {
-        list.innerHTML = `<div class="text-center text-red-500">Error loading history</div>`;
-        console.error(e);
-    }
-}
-
-// ... [Keep other functions: renderPendingOrders, renderStockRequests, populateDropdowns, setupCalendar, renderCalendarGrid, loadReportData, showToast] ...
-// (These were unchanged from previous working versions and are omitted here for brevity, but crucial for the file to run.)
-// ENSURE YOU INCLUDE THE HELPER FUNCTIONS DEFINED IN THE PREVIOUS RESPONSE IF COPY-PASTING.
-// Below are the essential placeholders for the unchanged functions to complete the file context.
-
-function renderPendingOrders(orders) {
-    const list = document.getElementById('pending-orders-list');
-    list.innerHTML = '';
-    if(orders.length === 0) return list.innerHTML = '<div class="text-center text-gray-400">No active orders</div>';
-    orders.forEach(o => {
-        const el = document.createElement('div');
-        el.className = "bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-700 flex justify-between items-center";
-        el.innerHTML = `<div><div class="font-bold dark:text-white">${o.deliveryAddress}</div><div class="text-xs text-gray-500">${o.quantity} items</div></div><div class="font-bold text-green-600">$${o.totalPrice}</div>`;
-        list.appendChild(el);
-    });
-}
-
->>>>>>> parent of c60ae61 (v2)
 function renderStockRequests(reqs) {
     const container = document.getElementById('admin-notifications');
     container.innerHTML = '';
@@ -458,11 +245,7 @@ function populateDropdowns() {
         cachedDrivers.forEach(d => {
             if(d.accessStatus !== 'suspended') {
                 const opt = document.createElement('option');
-<<<<<<< HEAD
                 opt.value = d.id;
-=======
-                opt.value = d.id; 
->>>>>>> parent of c60ae61 (v2)
                 opt.text = d.displayName;
                 sel.appendChild(opt);
             }
@@ -471,11 +254,8 @@ function populateDropdowns() {
     });
 }
 
-<<<<<<< HEAD
 // --- CALENDAR LOGIC ---
 
-=======
->>>>>>> parent of c60ae61 (v2)
 function setupCalendar() {
     document.getElementById('cal-prev').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendarGrid(); });
     document.getElementById('cal-next').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() + 1); renderCalendarGrid(); });

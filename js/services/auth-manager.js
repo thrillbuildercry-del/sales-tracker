@@ -1,7 +1,7 @@
-import { auth, db, provider, signInWithPopup, signOut, doc, getDoc, setDoc } from './firebase.js';
+import { auth, db, provider, signInWithPopup, signOut, doc, getDoc, setDoc, serverTimestamp } from './firebase.js';
 import { ROLES, STATUS } from '../config/constants.js';
 
-export const loginWithGoogle = async () => {
+export const loginWithGoogle = async (preferredRole = ROLES.BUYER) => {
     try {
         const result = await signInWithPopup(auth, provider);
         const user = result.user;
@@ -12,31 +12,29 @@ export const loginWithGoogle = async () => {
 
         if (!userSnap.exists()) {
             // NEW USER LOGIC
-            // For now, we default new web sign-ins to BUYER. 
-            // Admin can manually change them to DRIVER later, 
-            // OR we can add a UI selection step. 
-            // Based on your prompt, let's assume default is BUYER for public access,
-            // but we need a mechanism to flag Drivers.
+            // If they clicked "Staff Login", set role=DRIVER and status=PENDING
+            // If they clicked "Customer Login", set role=BUYER and status=ACTIVE
             
-            // For this phase, we will default to BUYER (Active).
-            // To create an ADMIN or DRIVER initially, you usually edit Firestore manually
-            // for the first user, or use a specific sign-up link logic.
+            const initialStatus = (preferredRole === ROLES.DRIVER) ? STATUS.PENDING : STATUS.ACTIVE;
             
             const newUser = {
                 uid: user.uid,
                 email: user.email,
                 displayName: user.displayName,
                 photoURL: user.photoURL,
-                role: ROLES.BUYER, 
-                accessStatus: STATUS.ACTIVE,
-                createdAt: new Date(),
+                role: preferredRole, 
+                accessStatus: initialStatus,
+                createdAt: serverTimestamp(),
                 currentStock: 0,
-                currentDebt: 0
+                currentDebt: 0,
+                vehicle: { color: '', model: '' } // Initialize empty vehicle object
             };
             
             await setDoc(userRef, newUser);
             return newUser;
         } else {
+            // EXISTING USER
+            // Return current data (roles might have changed since sign-up)
             return userSnap.data();
         }
     } catch (error) {
@@ -45,6 +43,11 @@ export const loginWithGoogle = async () => {
     }
 };
 
-export const logoutUser = () => {
-    return signOut(auth);
+export const logoutUser = async () => {
+    try {
+        await signOut(auth);
+        window.location.reload();
+    } catch (error) {
+        console.error("Logout failed", error);
+    }
 };

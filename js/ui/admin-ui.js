@@ -1,7 +1,19 @@
-import { subscribeToDrivers, subscribeToStockRequests, subscribeToCoverRequests, addStockToDriver, p2pTransfer, assignShift, deleteShift, resolveStockRequest, dismissStockRequest, updateUserStatus } from '../services/admin-service.js';
+import { 
+    subscribeToDrivers, 
+    subscribeToStockRequests, 
+    addStockToDriver, 
+    p2pTransfer, 
+    adminCollectAssets, 
+    assignShift, 
+    deleteShift, 
+    resolveStockRequest, 
+    dismissStockRequest 
+} from '../services/admin-service.js';
 import { subscribeToPendingOrders } from '../services/order-service.js';
 import { getWeeklyReport } from '../services/report-service.js';
+import { getDriverStats } from '../services/driver-service.js';
 import { logoutUser } from '../services/auth-manager.js';
+import { formatDate, formatTime } from '../utils/formatters.js';
 
 const appRoot = document.getElementById('app-root');
 let cachedDrivers = [];
@@ -44,14 +56,15 @@ export const renderAdminDashboard = (currentUser) => {
                     <div id="driver-list" class="space-y-3">Loading Team...</div>
                 </div>
 
-                <div id="view-orders" class="tab-content">
+                <div id="view-orders" class="tab-content hidden">
                     <h3 class="font-bold text-gray-800 dark:text-white mb-4">Live Orders</h3>
                     <div id="pending-orders-list" class="space-y-3"></div>
                 </div>
 
-                <div id="view-manage" class="tab-content space-y-6">
+                <div id="view-manage" class="tab-content hidden space-y-6">
+                    
                     <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border dark:border-gray-700">
-                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="package-plus" class="w-4 h-4 mr-2"></i> Add Stock</h3>
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="package-plus" class="w-4 h-4 mr-2"></i> Add Stock (Warehouse -> Driver)</h3>
                         <div class="flex gap-2">
                             <select id="restock-driver" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
                             <input type="number" id="restock-qty" placeholder="Qty" class="w-20 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
@@ -60,21 +73,41 @@ export const renderAdminDashboard = (currentUser) => {
                     </div>
 
                     <div class="bg-white dark:bg-gray-800 p-5 rounded-xl shadow-sm border dark:border-gray-700">
-                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="arrow-right-left" class="w-4 h-4 mr-2"></i> Transfer Assets</h3>
+                        
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="arrow-right-left" class="w-4 h-4 mr-2"></i> Driver to Driver Transfer</h3>
                         <div class="flex items-center gap-2 mb-2">
-                            <select id="trans-from" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
-                            <i data-lucide="arrow-right" class="w-4 h-4 text-gray-400"></i>
-                            <select id="trans-to" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
+                            <div class="flex-1">
+                                <label class="text-[10px] text-gray-500 font-bold uppercase">From</label>
+                                <select id="trans-from" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
+                            </div>
+                            <i data-lucide="arrow-right" class="w-4 h-4 text-gray-400 mt-4"></i>
+                            <div class="flex-1">
+                                <label class="text-[10px] text-gray-500 font-bold uppercase">To</label>
+                                <select id="trans-to" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
+                            </div>
                         </div>
-                        <div class="flex gap-2">
+                        <div class="flex gap-2 mb-4">
                             <input type="number" id="trans-qty" placeholder="Items" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
                             <input type="number" id="trans-debt" placeholder="Debt $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white">
                         </div>
-                        <button id="btn-admin-transfer" class="mt-3 w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg transition">Transfer</button>
+                        <button id="btn-admin-transfer" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-2 rounded-lg transition mb-6">Transfer Assets</button>
+
+                        <hr class="border-gray-200 dark:border-gray-700 mb-6">
+
+                        <h3 class="font-bold text-gray-800 dark:text-white mb-3 flex items-center"><i data-lucide="download" class="w-4 h-4 mr-2 text-green-500"></i> Collection / Return (Driver -> House)</h3>
+                        <div class="mb-2">
+                             <label class="text-[10px] text-gray-500 font-bold uppercase">Select Driver</label>
+                            <select id="collect-driver" class="w-full bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white driver-select"></select>
+                        </div>
+                        <div class="flex gap-2">
+                            <input type="number" id="collect-qty" placeholder="Return Stock" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white text-blue-600 font-bold">
+                            <input type="number" id="collect-debt" placeholder="Collect Cash $" class="flex-1 bg-gray-50 dark:bg-gray-700 border dark:border-gray-600 rounded p-2 text-sm dark:text-white text-green-600 font-bold">
+                        </div>
+                        <button id="btn-admin-collect" class="mt-3 w-full bg-green-600 hover:bg-green-500 text-white font-bold py-2 rounded-lg transition">Process Collection</button>
                     </div>
                 </div>
 
-                <div id="view-schedule" class="tab-content">
+                <div id="view-schedule" class="tab-content hidden">
                     <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border dark:border-gray-700 mb-6">
                         <h3 class="font-bold dark:text-white mb-3">Assign Shift</h3>
                         <div class="grid grid-cols-2 gap-2 mb-2">
@@ -97,34 +130,64 @@ export const renderAdminDashboard = (currentUser) => {
                     <div id="cal-details" class="mt-2 bg-white dark:bg-gray-800 p-3 rounded shadow-sm text-sm hidden"></div>
                 </div>
 
-                <div id="view-reports" class="tab-content">
+                <div id="view-reports" class="tab-content hidden">
                     <div class="bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border dark:border-gray-700 h-64">
                          <canvas id="chart-daily"></canvas>
                     </div>
                 </div>
             </main>
+
+            <div id="driver-detail-modal" class="fixed inset-0 bg-black/80 z-50 flex items-center justify-center hidden backdrop-blur-sm">
+                <div class="bg-white dark:bg-gray-800 w-11/12 max-w-lg p-6 rounded-2xl h-[80vh] flex flex-col shadow-2xl">
+                    <div class="flex justify-between items-center mb-4 border-b dark:border-gray-700 pb-2">
+                        <h2 class="text-xl font-bold dark:text-white" id="detail-name">Driver History</h2>
+                        <button id="btn-close-detail" class="text-gray-400 hover:text-white"><i data-lucide="x" class="w-6 h-6"></i></button>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-2 mb-4">
+                        <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded text-center">
+                            <div class="text-[10px] uppercase text-gray-500 font-bold">Total Sold (Week)</div>
+                            <div class="font-bold dark:text-white text-lg" id="detail-week-sold">0</div>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-700 p-2 rounded text-center">
+                            <div class="text-[10px] uppercase text-gray-500 font-bold">Profit (Week)</div>
+                            <div class="font-bold text-green-500 text-lg" id="detail-week-profit">$0</div>
+                        </div>
+                    </div>
+
+                    <div id="detail-history-list" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                        <div class="text-center text-gray-500 mt-10">Loading...</div>
+                    </div>
+                </div>
+            </div>
         </div>
     `;
     
-    // Initial Render Actions
+    // Initialize
     lucide.createIcons();
     setupTabs();
     setupCalendar();
     
-    // Listeners
-    document.getElementById('admin-logout').addEventListener('click', () => logoutUser());
+    // --- LISTENERS ---
 
+    document.getElementById('admin-logout').addEventListener('click', () => logoutUser());
+    document.getElementById('btn-close-detail').addEventListener('click', () => document.getElementById('driver-detail-modal').classList.add('hidden'));
+
+    // Real-time Data
     subscribeToDrivers((drivers) => {
         cachedDrivers = drivers;
         renderDriverList(drivers);
         populateDropdowns();
-        renderCalendarGrid(); // Refresh calendar with new shift data
+        renderCalendarGrid();
         loadReportData();
     });
 
     subscribeToStockRequests(renderStockRequests);
+    subscribeToPendingOrders(renderPendingOrders);
     
-    // Button Bindings
+    // --- ACTION BUTTONS ---
+
+    // 1. Restock
     document.getElementById('btn-admin-restock').addEventListener('click', async () => {
         const uid = document.getElementById('restock-driver').value;
         const qty = document.getElementById('restock-qty').value;
@@ -135,6 +198,7 @@ export const renderAdminDashboard = (currentUser) => {
         }
     });
 
+    // 2. Transfer
     document.getElementById('btn-admin-transfer').addEventListener('click', async () => {
         const f = document.getElementById('trans-from').value;
         const t = document.getElementById('trans-to').value;
@@ -148,6 +212,27 @@ export const renderAdminDashboard = (currentUser) => {
         }
     });
 
+    // 3. Collection
+    document.getElementById('btn-admin-collect').addEventListener('click', async () => {
+        const uid = document.getElementById('collect-driver').value;
+        const s = parseInt(document.getElementById('collect-qty').value) || 0;
+        const d = parseInt(document.getElementById('collect-debt').value) || 0;
+        
+        if(uid && (s > 0 || d > 0)) {
+            if(confirm(`Confirm Collection?\nStock: ${s}\nCash: $${d}`)) {
+                const res = await adminCollectAssets(uid, s, d);
+                if(res.success) {
+                    showToast("Collection Processed");
+                    document.getElementById('collect-qty').value = '';
+                    document.getElementById('collect-debt').value = '';
+                } else {
+                    alert("Error: " + res.error);
+                }
+            }
+        }
+    });
+
+    // 4. Schedule
     document.getElementById('btn-assign-shift').addEventListener('click', async () => {
         const uid = document.getElementById('sched-driver').value;
         const date = document.getElementById('sched-date').value;
@@ -166,18 +251,136 @@ function setupTabs() {
     const tabs = document.querySelectorAll('.nav-tab');
     const contents = document.querySelectorAll('.tab-content');
     
-    tabs[0].classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'); // Active state for first tab
+    tabs[0].classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'); 
 
     tabs.forEach(tab => {
         tab.addEventListener('click', () => {
-            // Reset
             tabs.forEach(t => t.classList.remove('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700'));
-            contents.forEach(c => c.classList.remove('active'));
+            contents.forEach(c => c.classList.add('hidden'));
             
-            // Activate
             tab.classList.add('bg-gray-100', 'text-blue-600', 'dark:bg-gray-700');
-            document.getElementById(`view-${tab.dataset.target}`).classList.add('active');
+            document.getElementById(`view-${tab.dataset.target}`).classList.remove('hidden');
         });
+    });
+}
+
+function renderDriverList(drivers) {
+    const list = document.getElementById('driver-list');
+    list.innerHTML = '';
+    
+    if(drivers.length === 0) {
+        list.innerHTML = '<div class="text-center text-gray-500">No drivers found.</div>';
+        return;
+    }
+
+    drivers.forEach(d => {
+        const isOnline = d.onlineStatus === 'online';
+        const card = document.createElement('div');
+        card.className = "bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700 transition";
+        card.innerHTML = `
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-blue-600 bg-blue-100 border-2 ${isOnline ? 'border-green-500' : 'border-gray-300'}">
+                    ${d.displayName ? d.displayName[0] : 'U'}
+                </div>
+                <div>
+                    <div class="font-bold dark:text-white">${d.displayName}</div>
+                    <div class="text-xs text-gray-500">Stock: ${d.currentStock || 0} • Debt: <span class="text-red-500">$${d.currentDebt || 0}</span></div>
+                </div>
+            </div>
+            <div class="text-right">
+                <div class="text-xs font-bold px-2 py-1 rounded ${d.accessStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'} mb-1">${d.accessStatus}</div>
+                <div class="text-[10px] text-gray-400">View History</div>
+            </div>
+        `;
+        // Click to view history
+        card.addEventListener('click', () => showDriverHistory(d.uid, d.displayName));
+        list.appendChild(card);
+    });
+}
+
+// --- HISTORY MODAL LOGIC ---
+
+async function showDriverHistory(uid, name) {
+    const modal = document.getElementById('driver-detail-modal');
+    const title = document.getElementById('detail-name');
+    const list = document.getElementById('detail-history-list');
+    const weekSoldEl = document.getElementById('detail-week-sold');
+    const weekProfitEl = document.getElementById('detail-week-profit');
+    
+    title.innerText = `${name} - History`;
+    list.innerHTML = '<div class="text-center text-gray-500 mt-10"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>Loading...</div>';
+    modal.classList.remove('hidden');
+
+    try {
+        const stats = await getDriverStats(uid);
+        
+        weekSoldEl.innerText = stats.weeklyUnits;
+        weekProfitEl.innerText = `$${stats.weeklyProfit}`;
+
+        list.innerHTML = '';
+        if(stats.history.length === 0) {
+            list.innerHTML = '<div class="text-center text-gray-500 mt-5">No sales recorded.</div>';
+            return;
+        }
+
+        stats.history.slice(0, 50).forEach(sale => {
+            const date = sale.timestamp ? formatDate(sale.timestamp) : 'N/A';
+            const time = sale.timestamp ? formatTime(sale.timestamp) : '';
+            const isStandard = sale.type === 'standard';
+            
+            // Color Coding Logic
+            const badgeClass = isStandard 
+                ? 'bg-green-100 text-green-700 border border-green-200' 
+                : 'bg-orange-100 text-orange-700 border border-orange-200';
+            
+            const typeLabel = isStandard ? 'FULL PRICE' : 'DEAL';
+
+            const el = document.createElement('div');
+            el.className = "bg-white dark:bg-gray-700 p-3 rounded-lg border border-gray-100 dark:border-gray-600 flex justify-between items-center";
+            el.innerHTML = `
+                <div>
+                    <div class="flex items-center gap-2">
+                        <span class="font-bold dark:text-white text-sm">${sale.quantity} Item(s)</span>
+                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded ${badgeClass}">${typeLabel}</span>
+                    </div>
+                    <div class="text-xs text-gray-400 mt-0.5">${date} at ${time}</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-[10px] text-gray-500 dark:text-gray-400">Profit</div>
+                    <div class="text-green-600 dark:text-green-400 font-bold">+$${sale.driverProfit}</div>
+                </div>
+            `;
+            list.appendChild(el);
+        });
+
+    } catch (e) {
+        list.innerHTML = `<div class="text-center text-red-500">Error loading history</div>`;
+        console.error(e);
+    }
+}
+
+// --- OTHER RENDERERS ---
+
+function renderPendingOrders(orders) {
+    const list = document.getElementById('pending-orders-list');
+    list.innerHTML = '';
+    if(orders.length === 0) {
+        list.innerHTML = '<div class="text-center text-gray-400">No active orders</div>';
+        return;
+    }
+    orders.forEach(o => {
+        const el = document.createElement('div');
+        el.className = "bg-white dark:bg-gray-800 p-3 rounded-lg border dark:border-gray-700 flex justify-between items-center";
+        el.innerHTML = `
+            <div>
+                <div class="font-bold dark:text-white">${o.buyerId}</div> <div class="text-xs text-gray-500">${o.deliveryAddress}</div>
+            </div>
+            <div class="text-right">
+                <div class="font-bold text-green-600">$${o.totalPrice}</div>
+                <div class="text-xs text-gray-400 uppercase">${o.status}</div>
+            </div>
+        `;
+        list.appendChild(el);
     });
 }
 
@@ -199,10 +402,8 @@ function renderStockRequests(reqs) {
         container.appendChild(div);
     });
 
-    // Event Delegation for dynamic buttons
     container.querySelectorAll('.btn-fulfill').forEach(b => {
         b.addEventListener('click', async (e) => {
-            // Pre-fill manage tab
             document.querySelector('[data-target="manage"]').click();
             document.getElementById('restock-driver').value = e.target.dataset.uid;
             await resolveStockRequest(e.target.dataset.id);
@@ -214,29 +415,6 @@ function renderStockRequests(reqs) {
     });
 }
 
-function renderDriverList(drivers) {
-    const list = document.getElementById('driver-list');
-    list.innerHTML = '';
-    drivers.forEach(d => {
-        const isOnline = d.onlineStatus === 'online'; // Field needs to be set in Driver UI
-        const card = document.createElement('div');
-        card.className = "bg-white dark:bg-gray-800 p-4 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 flex justify-between items-center";
-        card.innerHTML = `
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-blue-600 bg-blue-100 border-2 ${isOnline ? 'border-green-500' : 'border-gray-300'}">
-                    ${d.displayName ? d.displayName[0] : 'U'}
-                </div>
-                <div>
-                    <div class="font-bold dark:text-white">${d.displayName}</div>
-                    <div class="text-xs text-gray-500">Stock: ${d.currentStock || 0} • Debt: <span class="text-red-500">$${d.currentDebt || 0}</span></div>
-                </div>
-            </div>
-            <div class="text-xs font-bold px-2 py-1 rounded ${d.accessStatus === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${d.accessStatus}</div>
-        `;
-        list.appendChild(card);
-    });
-}
-
 function populateDropdowns() {
     const selects = document.querySelectorAll('.driver-select');
     selects.forEach(sel => {
@@ -245,7 +423,7 @@ function populateDropdowns() {
         cachedDrivers.forEach(d => {
             if(d.accessStatus !== 'suspended') {
                 const opt = document.createElement('option');
-                opt.value = d.id;
+                opt.value = d.id; // Or d.uid, ensure consistency in your user objects
                 opt.text = d.displayName;
                 sel.appendChild(opt);
             }
@@ -253,8 +431,6 @@ function populateDropdowns() {
         sel.value = current;
     });
 }
-
-// --- CALENDAR LOGIC ---
 
 function setupCalendar() {
     document.getElementById('cal-prev').addEventListener('click', () => { calendarDate.setMonth(calendarDate.getMonth() - 1); renderCalendarGrid(); });
@@ -273,13 +449,10 @@ function renderCalendarGrid() {
     const startDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // Padding
     for(let i=0; i<startDay; i++) grid.innerHTML += `<div></div>`;
 
     for(let d=1; d<=daysInMonth; d++) {
         const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-        
-        // Find shifts for this day across ALL drivers
         let dayShifts = [];
         cachedDrivers.forEach(drv => {
             (drv.shifts || []).forEach(s => {
@@ -295,7 +468,6 @@ function renderCalendarGrid() {
             dayEl.innerHTML += `<div class="bg-purple-500 text-white shift-bar truncate">${s.name}: ${s.start}-${s.end}</div>`;
         });
 
-        // Click to view/delete details
         dayEl.addEventListener('click', () => {
             const det = document.getElementById('cal-details');
             det.classList.remove('hidden');
@@ -314,7 +486,6 @@ function renderCalendarGrid() {
             });
             lucide.createIcons();
         });
-
         grid.appendChild(dayEl);
     }
 }
@@ -324,9 +495,10 @@ async function loadReportData() {
     document.getElementById('stat-total-items').innerText = data.totalItems;
     document.getElementById('stat-total-rev').innerText = `$${data.totalRevenue}`;
     
-    // Draw Chart
     const ctx = document.getElementById('chart-daily');
-    if(ctx) {
+    if(ctx && window.Chart) {
+         // Destroy old chart if exists (store instance globally or on window if needed)
+         // For simplicity, we just create new one, but ideally check for existing.
          new Chart(ctx, {
             type: 'line',
             data: {
